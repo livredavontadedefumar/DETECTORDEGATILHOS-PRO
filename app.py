@@ -2,76 +2,68 @@ import streamlit as st
 import google.generativeai as genai
 import pandas as pd
 
-# --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Detector de Gatilhos PRO", page_icon="🌿")
 
-# --- CONFIGURAÇÃO DA API KEY ---
+# Configuração da IA
 if "gemini" in st.secrets:
     genai.configure(api_key=st.secrets["gemini"]["api_key"])
-else:
-    st.error("API Key não encontrada.")
 
-# --- CONEXÃO COM A PLANILHA (MÉTODO DIRETO) ---
+# --- FUNÇÃO DE CONEXÃO DIRETA E LIMPA ---
 def carregar_dados():
     try:
-        # Puxamos o link direto das secrets
-        url = st.secrets["connections"]["gsheets"]["spreadsheet"]
-        # Transformamos o link de 'edit' para 'export' para o Pandas ler direto
-        url_csv = url.replace('/edit#gid=', '/export?format=csv&gid=')
-        if '/edit' in url and '&gid=' not in url_csv:
-             url_csv = url.replace('/edit', '/export?format=csv')
+        url_original = st.secrets["connections"]["gsheets"]["spreadsheet"]
+        # Limpa o link para garantir que o Google aceite o pedido
+        id_planilha = url_original.split("/d/")[1].split("/")[0]
+        # Forçamos o link para a aba MAPEAMENTO (gid=1239855325 conforme sua planilha)
+        url_csv = f"https://docs.google.com/spreadsheets/d/{id_planilha}/export?format=csv&gid=1239855325"
         
-        # Lendo a planilha (o segredo aqui é o formato CSV que evita o erro 400/404)
         df = pd.read_csv(url_csv)
         return df
     except Exception as e:
         st.error(f"Erro na conexão com a planilha: {e}")
         return pd.DataFrame()
 
-# --- LÓGICA DE LOGIN ---
+# --- INTERFACE E LOGIN ---
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.user_email = ""
 
-ADMIN_COMMAND = "/admin_master_2026"
-
 if not st.session_state.logged_in:
     st.title("🌿 Detector de Gatilhos PRO")
-    email_input = st.text_input("E-mail ou Comando ADM:").strip().lower()
+    email_input = st.text_input("E-mail do Mapeamento ou Comando ADM:").strip().lower()
     if st.button("Acessar"):
         st.session_state.user_email = email_input
         st.session_state.logged_in = True
         st.rerun()
 else:
     df = carregar_dados()
-    
     if not df.empty:
         # Padronizando a coluna de e-mail
         col_email = 'Endereço de e-mail'
         df[col_email] = df[col_email].astype(str).str.strip().str.lower()
         
-        is_admin = st.session_state.user_email == ADMIN_COMMAND
-        
-        if is_admin:
-            st.sidebar.success("MODO ADM")
+        if st.session_state.user_email == "/admin_master_2026":
+            st.sidebar.success("MODO ADM ATIVO")
             lista = df[col_email].unique()
-            sel = st.sidebar.selectbox("Aluno:", lista)
-            user_data = df[df[col_email] == sel]
+            usuario_selecionado = st.sidebar.selectbox("Selecionar Aluno:", lista)
+            user_data = df[df[col_email] == usuario_selecionado]
         else:
             user_data = df[df[col_email] == st.session_state.user_email]
-        
+
         if not user_data.empty:
             st.title("Seu Raio-X da Liberdade")
-            st.write(f"Registros: {len(user_data)}")
+            st.write(f"Registros encontrados: {len(user_data)}")
             
             # Chamada ao Gemini
             model = genai.GenerativeModel('gemini-1.5-pro')
-            with st.spinner('Analisando gatilhos...'):
+            with st.spinner('Gerando análise...'):
                 contexto = user_data.tail(30).to_string(index=False)
-                res = model.generate_content(f"Analise estes registros de fumo e sugira ferramentas: {contexto}")
-                st.markdown(res.text)
+                prompt = f"Com base nestes registros de gatilhos: {contexto}, sugira as ferramentas adequadas."
+                response = model.generate_content(prompt)
+                st.markdown("---")
+                st.markdown(response.text)
         else:
-            st.error("E-mail não encontrado nos registros.")
+            st.error("Nenhum registro encontrado para este e-mail.")
     
     if st.sidebar.button("Sair"):
         st.session_state.logged_in = False
