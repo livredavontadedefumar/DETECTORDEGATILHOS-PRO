@@ -1,19 +1,34 @@
 import streamlit as st
-from streamlit_gsheets import GSheetsConnection
 import google.generativeai as genai
 import pandas as pd
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Detector de Gatilhos PRO", page_icon="🌿")
 
-# --- CONFIGURAÇÃO DA API KEY (SECRETS) ---
-# Usamos o st.secrets para buscar a chave que você salvou no painel do Streamlit
+# --- CONFIGURAÇÃO DA API KEY ---
 if "gemini" in st.secrets:
     genai.configure(api_key=st.secrets["gemini"]["api_key"])
 else:
-    st.error("Erro: API Key não encontrada nas Secrets.")
+    st.error("API Key não encontrada.")
 
-# --- CONEXÃO E LOGIN ---
+# --- CONEXÃO COM A PLANILHA (MÉTODO DIRETO) ---
+def carregar_dados():
+    try:
+        # Puxamos o link direto das secrets
+        url = st.secrets["connections"]["gsheets"]["spreadsheet"]
+        # Transformamos o link de 'edit' para 'export' para o Pandas ler direto
+        url_csv = url.replace('/edit#gid=', '/export?format=csv&gid=')
+        if '/edit' in url and '&gid=' not in url_csv:
+             url_csv = url.replace('/edit', '/export?format=csv')
+        
+        # Lendo a planilha (o segredo aqui é o formato CSV que evita o erro 400/404)
+        df = pd.read_csv(url_csv)
+        return df
+    except Exception as e:
+        st.error(f"Erro na conexão com a planilha: {e}")
+        return pd.DataFrame()
+
+# --- LÓGICA DE LOGIN ---
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.user_email = ""
@@ -22,65 +37,42 @@ ADMIN_COMMAND = "/admin_master_2026"
 
 if not st.session_state.logged_in:
     st.title("🌿 Detector de Gatilhos PRO")
-    email_input = st.text_input("E-mail do Mapeamento ou Comando ADM:").strip().lower()
-    
+    email_input = st.text_input("E-mail ou Comando ADM:").strip().lower()
     if st.button("Acessar"):
         st.session_state.user_email = email_input
         st.session_state.logged_in = True
         st.rerun()
 else:
-    # --- CONEXÃO COM A PLANILHA ---
-    conn = st.connection("gsheets", type=GSheetsConnection)
+    df = carregar_dados()
     
-    # AJUSTE DE CONEXÃO: Forçamos a leitura da aba MAPEAMENTO com ttl=0 para evitar erro 400
-    try:
-        df = conn.read(worksheet="MAPEAMENTO", ttl=0)
-    except Exception as e:
-        # Caso o nome da aba falhe, tentamos ler a planilha de forma geral
-        df = conn.read(ttl=0)
-    
-    # Limpeza de dados para evitar erros de digitação e espaços vazios
-    if 'Endereço de e-mail' in df.columns:
-        df['Endereço de e-mail'] = df['Endereço de e-mail'].astype(str).str.strip().str.lower()
-    
-    is_admin = st.session_state.user_email == ADMIN_COMMAND
-    
-    if is_admin:
-        st.sidebar.success("MODO ADMINISTRADOR ATIVO")
-        if 'Endereço de e-mail' in df.columns:
-            lista_usuarios = df['Endereço de e-mail'].unique()
-            usuario_selecionado = st.sidebar.selectbox("Selecionar Aluno para Análise:", lista_usuarios)
-            user_data = df[df['Endereço de e-mail'] == usuario_selecionado]
-            st.title(f"Análise ADM: {usuario_selecionado}")
+    if not df.empty:
+        # Padronizando a coluna de e-mail
+        col_email = 'Endereço de e-mail'
+        df[col_email] = df[col_email].astype(str).str.strip().str.lower()
+        
+        is_admin = st.session_state.user_email == ADMIN_COMMAND
+        
+        if is_admin:
+            st.sidebar.success("MODO ADM")
+            lista = df[col_email].unique()
+            sel = st.sidebar.selectbox("Aluno:", lista)
+            user_data = df[df[col_email] == sel]
         else:
-            st.error("Coluna 'Endereço de e-mail' não encontrada.")
-            user_data = pd.DataFrame()
-    else:
-        user_data = df[df['Endereço de e-mail'] == st.session_state.user_email]
-        st.title("Seu Raio-X da Liberdade")
-
-    # Exibição dos dados e chamada do Gemini
-    if not user_data.empty:
-        st.write(f"Registros encontrados: {len(user_data)}")
+            user_data = df[df[col_email] == st.session_state.user_email]
         
-        # Preparando os dados para a IA (limitando para não travar o prompt)
-        contexto_aluno = user_data.tail(50).to_string(index=False)
-        
-        # Chamada ao Gemini
-        model = genai.GenerativeModel('gemini-1.5-pro')
-        
-        with st.spinner('Gerando seu Raio-X personalizado...'):
-            try:
-                # Instrução mestre para a IA
-                prompt = f"Analise os seguintes dados de rastreamento de cigarro e gere o Raio-X sugerindo as Placas de X de acordo com os gatilhos encontrados:\n\n{contexto_aluno}"
-                response = model.generate_content(prompt)
-                st.markdown("---")
-                st.markdown(response.text)
-            except Exception as e:
-                st.error(f"Erro ao gerar análise pela IA: {e}")
-    else:
-        st.error("Nenhum dado encontrado. Verifique se o e-mail está correto e se há registros na aba MAPEAMENTO.")
+        if not user_data.empty:
+            st.title("Seu Raio-X da Liberdade")
+            st.write(f"Registros: {len(user_data)}")
+            
+            # Chamada ao Gemini
+            model = genai.GenerativeModel('gemini-1.5-pro')
+            with st.spinner('Analisando gatilhos...'):
+                contexto = user_data.tail(30).to_string(index=False)
+                res = model.generate_content(f"Analise estes registros de fumo e sugira ferramentas: {contexto}")
+                st.markdown(res.text)
+        else:
+            st.error("E-mail não encontrado nos registros.")
     
-    if st.sidebar.button("Sair/Trocar Usuário"):
+    if st.sidebar.button("Sair"):
         st.session_state.logged_in = False
         st.rerun()
