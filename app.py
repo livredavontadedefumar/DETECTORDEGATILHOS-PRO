@@ -6,12 +6,14 @@ import pandas as pd
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Detector de Gatilhos PRO", page_icon="🌿")
 
+# --- CONFIGURAÇÃO DA API KEY (SECRETS) ---
+genai.configure(api_key=st.secrets["gemini"]["api_key"])
+
 # --- CONEXÃO E LOGIN ---
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.user_email = ""
 
-# Simulando uma verificação de ADM
 ADMIN_COMMAND = "/admin_master_2026"
 
 if not st.session_state.logged_in:
@@ -23,12 +25,15 @@ if not st.session_state.logged_in:
         st.session_state.logged_in = True
         st.rerun()
 else:
-    # Lógica de Administração
-    is_admin = st.session_state.user_email == ADMIN_COMMAND
-    
-    # Conectar ao Sheets
+    # Conectar ao Sheets especificando a aba MAPEAMENTO
     conn = st.connection("gsheets", type=GSheetsConnection)
-    df = conn.read()
+    # AJUSTE AQUI: Lendo especificamente a aba de registros
+    df = conn.read(worksheet="MAPEAMENTO")
+    
+    # Limpeza de dados para evitar erros de digitação
+    df['Endereço de e-mail'] = df['Endereço de e-mail'].str.strip().str.lower()
+    
+    is_admin = st.session_state.user_email == ADMIN_COMMAND
     
     if is_admin:
         st.sidebar.success("MODO ADMINISTRADOR ATIVO")
@@ -40,9 +45,25 @@ else:
         user_data = df[df['Endereço de e-mail'] == st.session_state.user_email]
         st.title("Seu Raio-X da Liberdade")
 
-    # Exibição dos dados e chamada do Gemini (usando o Prompt Mestre configurado no AI Studio)
     if not user_data.empty:
         st.write(f"Registros encontrados: {len(user_data)}")
-        # Aqui o código continua com a chamada da API do Gemini...
+        
+        # Preparando os dados para a IA
+        contexto_aluno = user_data.to_string(index=False)
+        
+        # Chamada ao Gemini
+        model = genai.GenerativeModel('gemini-1.5-pro') # Ou o modelo que você configurou
+        
+        with st.spinner('Gerando seu Raio-X personalizado...'):
+            try:
+                response = model.generate_content(f"Analise os seguintes dados de rastreamento e gere o Raio-X conforme o seu treinamento mestre:\n\n{contexto_aluno}")
+                st.markdown("---")
+                st.markdown(response.text)
+            except Exception as e:
+                st.error(f"Erro ao gerar análise: {e}")
     else:
-        st.error("Nenhum dado encontrado para este usuário.")
+        st.error("Nenhum dado encontrado para este usuário na aba MAPEAMENTO.")
+    
+    if st.sidebar.button("Sair/Trocar Usuário"):
+        st.session_state.logged_in = False
+        st.rerun()
