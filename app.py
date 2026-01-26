@@ -7,7 +7,11 @@ import pandas as pd
 st.set_page_config(page_title="Detector de Gatilhos PRO", page_icon="🌿")
 
 # --- CONFIGURAÇÃO DA API KEY (SECRETS) ---
-genai.configure(api_key=st.secrets["gemini"]["api_key"])
+# Usamos o st.secrets para buscar a chave que você salvou no painel do Streamlit
+if "gemini" in st.secrets:
+    genai.configure(api_key=st.secrets["gemini"]["api_key"])
+else:
+    st.error("Erro: API Key não encontrada nas Secrets.")
 
 # --- CONEXÃO E LOGIN ---
 if "logged_in" not in st.session_state:
@@ -25,44 +29,57 @@ if not st.session_state.logged_in:
         st.session_state.logged_in = True
         st.rerun()
 else:
-    # Conectar ao Sheets especificando a aba MAPEAMENTO
+    # --- CONEXÃO COM A PLANILHA ---
     conn = st.connection("gsheets", type=GSheetsConnection)
-    # AJUSTE AQUI: Lendo especificamente a aba de registros
-    df = conn.read(worksheet="MAPEAMENTO")
     
-    # Limpeza de dados para evitar erros de digitação
-    df['Endereço de e-mail'] = df['Endereço de e-mail'].str.strip().str.lower()
+    # AJUSTE DE CONEXÃO: Forçamos a leitura da aba MAPEAMENTO com ttl=0 para evitar erro 400
+    try:
+        df = conn.read(worksheet="MAPEAMENTO", ttl=0)
+    except Exception as e:
+        # Caso o nome da aba falhe, tentamos ler a planilha de forma geral
+        df = conn.read(ttl=0)
+    
+    # Limpeza de dados para evitar erros de digitação e espaços vazios
+    if 'Endereço de e-mail' in df.columns:
+        df['Endereço de e-mail'] = df['Endereço de e-mail'].astype(str).str.strip().str.lower()
     
     is_admin = st.session_state.user_email == ADMIN_COMMAND
     
     if is_admin:
         st.sidebar.success("MODO ADMINISTRADOR ATIVO")
-        lista_usuarios = df['Endereço de e-mail'].unique()
-        usuario_selecionado = st.sidebar.selectbox("Selecionar Aluno para Análise:", lista_usuarios)
-        user_data = df[df['Endereço de e-mail'] == usuario_selecionado]
-        st.title(f"Análise ADM: {usuario_selecionado}")
+        if 'Endereço de e-mail' in df.columns:
+            lista_usuarios = df['Endereço de e-mail'].unique()
+            usuario_selecionado = st.sidebar.selectbox("Selecionar Aluno para Análise:", lista_usuarios)
+            user_data = df[df['Endereço de e-mail'] == usuario_selecionado]
+            st.title(f"Análise ADM: {usuario_selecionado}")
+        else:
+            st.error("Coluna 'Endereço de e-mail' não encontrada.")
+            user_data = pd.DataFrame()
     else:
         user_data = df[df['Endereço de e-mail'] == st.session_state.user_email]
         st.title("Seu Raio-X da Liberdade")
 
+    # Exibição dos dados e chamada do Gemini
     if not user_data.empty:
         st.write(f"Registros encontrados: {len(user_data)}")
         
-        # Preparando os dados para a IA
-        contexto_aluno = user_data.to_string(index=False)
+        # Preparando os dados para a IA (limitando para não travar o prompt)
+        contexto_aluno = user_data.tail(50).to_string(index=False)
         
         # Chamada ao Gemini
-        model = genai.GenerativeModel('gemini-1.5-pro') # Ou o modelo que você configurou
+        model = genai.GenerativeModel('gemini-1.5-pro')
         
         with st.spinner('Gerando seu Raio-X personalizado...'):
             try:
-                response = model.generate_content(f"Analise os seguintes dados de rastreamento e gere o Raio-X conforme o seu treinamento mestre:\n\n{contexto_aluno}")
+                # Instrução mestre para a IA
+                prompt = f"Analise os seguintes dados de rastreamento de cigarro e gere o Raio-X sugerindo as Placas de X de acordo com os gatilhos encontrados:\n\n{contexto_aluno}"
+                response = model.generate_content(prompt)
                 st.markdown("---")
                 st.markdown(response.text)
             except Exception as e:
-                st.error(f"Erro ao gerar análise: {e}")
+                st.error(f"Erro ao gerar análise pela IA: {e}")
     else:
-        st.error("Nenhum dado encontrado para este usuário na aba MAPEAMENTO.")
+        st.error("Nenhum dado encontrado. Verifique se o e-mail está correto e se há registros na aba MAPEAMENTO.")
     
     if st.sidebar.button("Sair/Trocar Usuário"):
         st.session_state.logged_in = False
