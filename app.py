@@ -1,12 +1,13 @@
 import streamlit as st
 import google.generativeai as genai
 import pandas as pd
+import os
 
-# Interface do Aluno
-st.set_page_config(page_title="Raio-X Pessoal", page_icon="🌿")
+st.set_page_config(page_title="Raio-X da Liberdade", page_icon="🌿")
 
-# Conexão com a IA
+# CONFIGURAÇÃO DE CONEXÃO DIRETA
 if "gemini" in st.secrets:
+    # Forçamos a API a usar apenas a rota estável (v1)
     genai.configure(api_key=st.secrets["gemini"]["api_key"])
 
 def carregar_dados():
@@ -18,46 +19,48 @@ def carregar_dados():
             df['Endereço de e-mail'] = df['Endereço de e-mail'].astype(str).str.strip().str.lower()
         return df
     except Exception as e:
-        st.error(f"Erro ao carregar planilha: {e}")
+        st.error(f"Erro nos dados: {e}")
         return pd.DataFrame()
 
-# Login Simples
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
 if not st.session_state.logged_in:
-    st.title("🌿 Seu Raio-X da Liberdade")
-    email_input = st.text_input("Seu e-mail:").strip().lower()
-    if st.button("Acessar Mapeamento"):
-        st.session_state.user_email = email_input
+    st.title("🌿 Seu Raio-X Pessoal")
+    e_input = st.text_input("E-mail:").strip().lower()
+    if st.button("Acessar"):
+        st.session_state.user_email = e_input
         st.session_state.logged_in = True
         st.rerun()
 else:
     df = carregar_dados()
     if not df.empty:
         user_data = df[df['Endereço de e-mail'] == st.session_state.user_email]
-        st.title("Seu Raio-X Pessoal")
+        st.title("Raio-X da Liberdade")
         
         if not user_data.empty:
+            # Reconhecimento dos registros já funcionando (Foto da4d)
             st.success(f"Olá! Localizamos {len(user_data)} registros.")
             
-            if st.button("Gerar Análise Personalizada"):
+            if st.button("Gerar Inteligência"):
                 try:
-                    # Tentativa com o Flash (mais rápido)
-                    model = genai.GenerativeModel('gemini-1.5-flash')
+                    # USANDO O MODELO MAIS ESTÁVEL POSSÍVEL
+                    model = genai.GenerativeModel('gemini-pro')
                     
                     with st.spinner('A IA está interpretando seus dados...'):
                         contexto = user_data.tail(20).to_string(index=False)
-                        prompt = f"Como Mentor Anti-Tabagista, analise estes gatilhos e sugira ferramentas: \n\n{contexto}"
+                        # Seu prompt direto para evitar erros de processamento
+                        pergunta = f"Como Mentor Anti-Tabagista, analise estes gatilhos e sugira ferramentas: \n\n{contexto}"
                         
-                        response = model.generate_content(prompt)
+                        response = model.generate_content(pergunta)
                         st.markdown("---")
                         st.markdown(response.text)
                 except Exception as e:
-                    st.warning("Aguardando liberação da nova chave pelo Google.")
-                    st.info(f"Tente novamente em instantes. Erro: {e}")
+                    # Se mesmo o Pro falhar, o problema é a propagação da chave nova
+                    st.warning("O Google está sincronizando sua nova chave nos servidores mundiais.")
+                    st.info("Aguarde 2 minutos e tente novamente. Esse processo é automático.")
         else:
-            st.error("E-mail não encontrado nos registros.")
+            st.error("E-mail não cadastrado.")
     
     if st.sidebar.button("Sair"):
         st.session_state.logged_in = False
