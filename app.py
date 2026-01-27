@@ -4,7 +4,7 @@ import pandas as pd
 
 st.set_page_config(page_title="Raio-X da Liberdade", page_icon="🌿")
 
-# CONFIGURAÇÃO DIRETA
+# 1. Configuração da IA
 if "gemini" in st.secrets:
     genai.configure(api_key=st.secrets["gemini"]["api_key"])
 
@@ -20,13 +20,14 @@ def carregar_dados():
         st.error(f"Erro ao carregar dados: {e}")
         return pd.DataFrame()
 
+# 2. Sistema de Login
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
 if not st.session_state.logged_in:
-    st.title("🌿 Raio-X da Liberdade")
-    email_input = st.text_input("Seu e-mail:").strip().lower()
-    if st.button("Acessar"):
+    st.title("🌿 Seu Raio-X da Liberdade")
+    email_input = st.text_input("E-mail cadastrado:").strip().lower()
+    if st.button("Acessar Mapeamento"):
         st.session_state.user_email = email_input
         st.session_state.logged_in = True
         st.rerun()
@@ -37,29 +38,27 @@ else:
         st.title("Seu Raio-X")
         
         if not user_data.empty:
-            st.info(f"Olá! Localizamos {len(user_data)} registros.")
+            st.info(f"Olá! Localizamos {len(user_data)} registros no seu mapeamento.")
             
             if st.button("Gerar minha análise personalizada"):
                 try:
-                    # TENTATIVA DIRETA SEM SYSTEM INSTRUCTIONS NO CÓDIGO
-                    # Isso às vezes ajuda a destravar chaves que estão "aguardando"
-                    model = genai.GenerativeModel('gemini-1.5-flash')
+                    # Inserindo sua Persona da Foto 26 para a IA começar a trabalhar
+                    model = genai.GenerativeModel(
+                        model_name='gemini-1.5-flash',
+                        system_instruction="Você é o DETECTOR DE GATILHOS PRO, uma inteligência especializada em Terapia Anti-Tabagista baseada no método."
+                    )
                     
-                    with st.spinner('Interpretando dados...'):
+                    with st.spinner('Interpretando seus gatilhos agora...'):
                         contexto = user_data.tail(30).to_string(index=False)
-                        # O Prompt Mestre entra aqui como uma pergunta direta
-                        pergunta = f"""
-                        Analise estes registros como um Mentor Anti-Tabagista e sugira ferramentas:
-                        \n\n{contexto}
-                        """
-                        response = model.generate_content(pergunta)
+                        response = model.generate_content(f"Analise estes registros e sugira ferramentas: \n\n{contexto}")
                         st.markdown("---")
                         st.markdown(response.text)
                 except Exception as e:
-                    st.warning("O Google ainda está processando sua chave.")
-                    st.info("Aguarde um instante e tente clicar no botão novamente.")
+                    # Mensagem para o tempo de sincronização do Google (Foto 38)
+                    st.warning("O sistema está finalizando a ativação da sua análise.")
+                    st.info("Aguarde um minuto e clique no botão novamente.")
         else:
-            st.error("E-mail não encontrado.")
+            st.error("E-mail não encontrado nos registros.")
     
     if st.sidebar.button("Sair"):
         st.session_state.logged_in = False
