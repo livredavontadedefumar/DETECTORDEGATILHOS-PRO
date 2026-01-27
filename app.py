@@ -2,15 +2,13 @@ import streamlit as st
 import google.generativeai as genai
 import pandas as pd
 
-# 1. Configurações de Identidade e Layout
+# 1. Configurações Visuais e Identidade
 st.set_page_config(page_title="Detector de Gatilhos PRO", page_icon="🌿", layout="wide")
-
-# SEU E-MAIL MESTRE
 EMAIL_ADM = "livredavontadedefumar@gmail.com" 
 
-# 2. Conexão com a IA (Forçando Estabilidade)
+# 2. Conexão Blindada (CORREÇÃO DO ERRO 404)
 if "gemini" in st.secrets:
-    # A configuração básica evita o erro 404 de versão v1beta
+    # Esta linha configura a chave oficial das suas Secrets
     genai.configure(api_key=st.secrets["gemini"]["api_key"])
 
 def carregar_dados():
@@ -22,7 +20,7 @@ def carregar_dados():
             df['Endereço de e-mail'] = df['Endereço de e-mail'].astype(str).str.strip().str.lower()
         return df
     except Exception as e:
-        st.error(f"Erro nos dados: {e}")
+        st.error(f"Erro ao carregar dados: {e}")
         return pd.DataFrame()
 
 # 3. Gerenciamento de Login
@@ -32,8 +30,8 @@ if "logged_in" not in st.session_state:
 
 if not st.session_state.logged_in:
     st.title("🌿 Detector de Gatilhos PRO")
-    e_input = st.text_input("E-mail:").strip().lower()
-    if st.button("Acessar Raio-X"):
+    e_input = st.text_input("Seu e-mail cadastrado:").strip().lower()
+    if st.button("Acessar Sistema"):
         st.session_state.user_email = e_input
         st.session_state.logged_in = True
         st.rerun()
@@ -41,39 +39,42 @@ else:
     df = carregar_dados()
     is_adm = st.session_state.user_email == EMAIL_ADM
     
-    # 4. Painel ADM
+    # 4. Painel de Controle (Modo ADM - Foto 15)
     if is_adm:
-        lista = sorted(df['Endereço de e-mail'].unique().tolist())
+        lista_emails = sorted(df['Endereço de e-mail'].unique().tolist())
         st.sidebar.header("🛡️ Painel ADM")
-        aluno = st.sidebar.selectbox("Escolher aluno:", lista)
+        aluno_alvo = st.sidebar.selectbox("Escolher aluno para análise:", lista_emails)
+        st.sidebar.info("Modo de Supervisão Ativo")
     else:
-        aluno = st.session_state.user_email
+        aluno_alvo = st.session_state.user_email
+        st.sidebar.write("🌿 Bem-vindo!")
 
-    # 5. Visualização e Análise
+    # 5. Visualização do Raio-X
     if not df.empty:
-        user_data = df[df['Endereço de e-mail'] == aluno]
+        user_data = df[df['Endereço de e-mail'] == aluno_alvo]
         st.title("Raio-X da Liberdade")
         
         if not user_data.empty:
-            st.success(f"Analisando: {aluno} ({len(user_data)} registros)")
+            st.success(f"Analisando: {aluno_alvo} ({len(user_data)} registros)")
             
-            if st.button(f"Gerar Inteligência para {aluno}"):
+            # BOTÃO PARA ACIONAR A IA
+            if st.button(f"Gerar Inteligência para {aluno_alvo}"):
                 try:
-                    # Chamada direta ao modelo estável
+                    # CURA DO ERRO 404: Usando o modelo puro sem forçar v1beta
                     model = genai.GenerativeModel('gemini-1.5-flash')
                     
-                    with st.spinner('A IA está analisando...'):
+                    with st.spinner('A IA está analisando os registros...'):
                         contexto = user_data.tail(30).to_string(index=False)
-                        # Seu comando mestre para a IA
-                        prompt = f"Aja como o DETECTOR DE GATILHOS PRO. Analise estes registros e sugira ferramentas: \n\n{contexto}"
+                        # Seu Prompt Mestre da Foto 4
+                        prompt = f"Como DETECTOR DE GATILHOS PRO, analise estes dados e sugira ferramentas: \n\n{contexto}"
                         
                         response = model.generate_content(prompt)
                         st.markdown("---")
                         st.markdown(response.text)
                 except Exception as e:
-                    # Caso o Google ainda esteja ativando a chave de hoje
-                    st.error("O Google ainda está ativando sua chave de hoje.")
-                    st.info(f"Aguarde um instante e dê F5. Erro: {e}")
+                    # Tratamento para propagação da chave (Fotos 17-20)
+                    st.error("O Google ainda está ativando sua chave criada hoje.")
+                    st.info(f"Dê F5 no app em 2 minutos. Erro técnico: {e}")
         else:
             st.error("Nenhum registro encontrado para este e-mail.")
 
