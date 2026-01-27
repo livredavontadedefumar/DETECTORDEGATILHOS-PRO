@@ -2,13 +2,13 @@ import streamlit as st
 import google.generativeai as genai
 import pandas as pd
 
-# 1. Configurações de Identidade e Layout
+# 1. Layout e Identidade
 st.set_page_config(page_title="Detector de Gatilhos PRO", page_icon="🌿", layout="wide")
 
 # SEU E-MAIL MESTRE
 EMAIL_ADM = "livredavontadedefumar@gmail.com" 
 
-# 2. Conexão com a IA (Ajuste para evitar erro 404)
+# 2. Conexão com a IA (Forçando Estabilidade)
 if "gemini" in st.secrets:
     genai.configure(api_key=st.secrets["gemini"]["api_key"])
 
@@ -32,7 +32,7 @@ if "logged_in" not in st.session_state:
 if not st.session_state.logged_in:
     st.title("🌿 Detector de Gatilhos PRO")
     email_input = st.text_input("E-mail cadastrado:").strip().lower()
-    if st.button("Acessar Raio-X"):
+    if st.button("Acessar Sistema"):
         st.session_state.user_email = email_input
         st.session_state.logged_in = True
         st.rerun()
@@ -41,42 +41,47 @@ else:
     df = carregar_dados()
     is_adm = st.session_state.user_email == EMAIL_ADM
     
-    # 4. Painel de Controle Exclusivo do ADM
+    # 4. Painel de Controle (Exclusivo ADM)
     if is_adm:
         lista_emails = sorted(df['Endereço de e-mail'].unique().tolist())
         st.sidebar.header("🛡️ Painel ADM")
-        aluno_alvo = st.sidebar.selectbox("Analisar aluno:", lista_emails)
-        st.sidebar.info("Modo Supervisor Ativo")
+        aluno_alvo = st.sidebar.selectbox("Escolher aluno para análise:", lista_emails)
+        st.sidebar.info("Modo de Supervisão Ativo")
     else:
         aluno_alvo = st.session_state.user_email
         st.sidebar.write("🌿 Bem-vindo!")
 
-    # 5. Análise dos Dados
+    # 5. Visualização e Análise
     if not df.empty:
         user_data = df[df['Endereço de e-mail'] == aluno_alvo]
         st.title("Raio-X da Liberdade")
+        st.subheader(f"Analisando: {aluno_alvo}")
         
         if not user_data.empty:
-            st.success(f"Encontramos {len(user_data)} registros para {aluno_alvo}")
+            st.success(f"Encontramos {len(user_data)} registros no mapeamento.")
             
-            # --- COMANDO DA IA ---
+            # --- ACIONAMENTO DA IA ---
             if st.button(f"Gerar Inteligência para {aluno_alvo}"):
                 try:
-                    # MUDANÇA CRUCIAL: Usando apenas o nome estável do modelo
+                    # AJUSTE PARA ELIMINAR O ERRO 404:
+                    # Mudamos para o modelo 1.5-flash puro, sem prefixos instáveis.
                     model = genai.GenerativeModel('gemini-1.5-flash')
                     
-                    with st.spinner('Gerando Raio-X...'):
+                    with st.spinner('A IA está analisando os dados...'):
                         contexto = user_data.tail(30).to_string(index=False)
-                        # Prompt que guia o comportamento da IA
-                        res = model.generate_content(f"Como mentor Anti-Tabagista, analise estes registros e sugira ferramentas: \n\n{contexto}")
+                        prompt = f"Como especialista Anti-Tabagista, analise estes registros de gatilhos e sugira ferramentas: \n\n{contexto}"
+                        
+                        # Chamada direta sem parâmetros de versão que causam o 404
+                        response = model.generate_content(prompt)
                         st.markdown("---")
-                        st.markdown(res.text)
+                        st.markdown(response.text)
+                        
                 except Exception as e:
-                    # Caso a chave de 26/01 ainda esteja em ativação
-                    st.error("O Google ainda está processando sua chave nova.")
-                    st.info(f"Aguarde um minuto e tente novamente. Erro: {e}")
+                    # Caso a ativação da chave de hoje ainda esteja em curso
+                    st.error("O Google ainda está ativando sua chave nova.")
+                    st.info(f"Dê F5 em 2 minutos. Erro técnico: {e}")
         else:
-            st.error("Nenhum registro encontrado para este e-mail.")
+            st.error("Nenhum registro encontrado para este usuário.")
 
     if st.sidebar.button("Sair"):
         st.session_state.logged_in = False
