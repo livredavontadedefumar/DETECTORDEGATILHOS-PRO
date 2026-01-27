@@ -40,12 +40,22 @@ else:
             st.title("Seu Raio-X da Liberdade")
             st.write(f"Olá! Encontramos {len(user_data)} registros no seu mapeamento.")
             
-            model = genai.GenerativeModel('gemini-1.5-pro')
+            # AJUSTE AQUI: Mudamos para o modelo 'gemini-1.5-flash' para evitar o erro NotFound
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            
             with st.spinner('A IA está gerando sua análise personalizada...'):
-                contexto = user_data.tail(20).to_string(index=False)
-                res = model.generate_content(f"Analise estes gatilhos e sugira ferramentas: {contexto}")
-                st.markdown("---")
-                st.markdown(res.text)
+                try:
+                    # Pegamos os últimos registros para a análise ser focada no momento atual
+                    contexto = user_data.tail(30).to_string(index=False)
+                    
+                    # Chamada da IA com instrução clara
+                    prompt = f"Analise estes registros de gatilhos de fumo e sugira as ferramentas adequadas do método para cada situação encontrada: {contexto}"
+                    res = model.generate_content(prompt)
+                    
+                    st.markdown("---")
+                    st.markdown(res.text)
+                except Exception as ai_error:
+                    st.error(f"A IA encontrou um problema ao gerar o texto: {ai_error}")
         else:
             st.error(f"O e-mail '{st.session_state.user_email}' não foi encontrado nos registros da aba MAPEAMENTO.")
             if st.button("Tentar outro e-mail"):
