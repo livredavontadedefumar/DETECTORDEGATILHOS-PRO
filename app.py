@@ -1,10 +1,14 @@
 import streamlit as st
 import google.generativeai as genai
 import pandas as pd
+import os
 
 st.set_page_config(page_title="Detector de Gatilhos PRO", page_icon="🌿")
 
+# --- CONFIGURAÇÃO DA IA (FORÇANDO VERSÃO ESTÁVEL) ---
 if "gemini" in st.secrets:
+    # Forçamos o uso da biblioteca para não usar v1beta que está dando erro 404
+    os.environ["GOOGLE_API_KEY"] = st.secrets["gemini"]["api_key"]
     genai.configure(api_key=st.secrets["gemini"]["api_key"])
 
 def carregar_dados():
@@ -38,40 +42,30 @@ else:
             st.title("Seu Raio-X da Liberdade")
             st.write(f"Olá! Encontramos {len(user_data)} registros no seu mapeamento.")
             
-            # AJUSTE DEFINITIVO: Usando o nome completo do modelo para evitar o Erro 404
-            model = genai.GenerativeModel('models/gemini-1.5-flash')
+            # MUDANÇA NO MOTOR: Usando o nome do modelo sem o prefixo 'models/' 
+            # para testar a compatibilidade direta com a chave de API
+            model = genai.GenerativeModel('gemini-1.5-flash')
             
-            with st.spinner('A IA está gerando sua análise personalizada...'):
+            with st.spinner('A IA está analisando seus gatilhos...'):
                 try:
-                    # Enviamos apenas as colunas relevantes para economizar processamento
                     contexto = user_data.tail(30).to_string(index=False)
+                    prompt = f"Analise estes registros de gatilhos de fumo e sugira as ferramentas do método: {contexto}"
                     
-                    prompt = f"""
-                    Você é um especialista em cessação tabágica. 
-                    Analise os seguintes registros de gatilhos de fumo e sugira as ferramentas 
-                    adequadas para cada situação:
-                    
-                    {contexto}
-                    """
-                    
+                    # Chamada direta sem parâmetros de versão que causam o 404
                     response = model.generate_content(prompt)
+                    
                     st.markdown("---")
                     st.markdown(response.text)
-                    
-                except Exception as ai_error:
-                    # Caso o modelo flash ainda dê erro, tentamos o pro como backup automático
+                except Exception as e:
+                    # Se falhar o flash, tentamos o pro 1.0 que é o mais compatível de todos
                     try:
-                        model_backup = genai.GenerativeModel('models/gemini-1.5-pro')
-                        response = model_backup.generate_content(prompt)
-                        st.markdown("---")
+                        model_old = genai.GenerativeModel('gemini-1.0-pro')
+                        response = model_old.generate_content(prompt)
                         st.markdown(response.text)
                     except:
-                        st.error(f"Erro na geração: {ai_error}")
+                        st.error(f"Houve um problema na comunicação com o Google. Verifique sua API Key nas Secrets. Erro: {e}")
         else:
-            st.error(f"O e-mail '{st.session_state.user_email}' não foi encontrado.")
-            if st.button("Tentar outro e-mail"):
-                st.session_state.logged_in = False
-                st.rerun()
+            st.error("E-mail não encontrado.")
     
     if st.sidebar.button("Sair"):
         st.session_state.logged_in = False
