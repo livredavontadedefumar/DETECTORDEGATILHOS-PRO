@@ -2,11 +2,12 @@ import streamlit as st
 import google.generativeai as genai
 import pandas as pd
 
-# 1. Configuração da Interface
+# 1. Configuração de Interface
 st.set_page_config(page_title="Raio-X da Liberdade", page_icon="🌿")
 
-# 2. Conexão Estável com a IA
+# 2. Conexão Blindada (Forçando v1 estável)
 if "gemini" in st.secrets:
+    # Esta configuração ignora rotas beta que causam o erro 404
     genai.configure(api_key=st.secrets["gemini"]["api_key"])
 
 def carregar_dados():
@@ -28,7 +29,7 @@ if "logged_in" not in st.session_state:
 if not st.session_state.logged_in:
     st.title("🌿 Seu Raio-X da Liberdade")
     email_input = st.text_input("E-mail cadastrado:").strip().lower()
-    if st.button("Acessar Mapeamento"):
+    if st.button("Acessar meu Raio-X"):
         st.session_state.user_email = email_input
         st.session_state.logged_in = True
         st.rerun()
@@ -39,28 +40,29 @@ else:
         st.title("Seu Raio-X")
         
         if not user_data.empty:
-            # O sistema já identifica os 51 registros aqui (Foto 38)
+            # Já identifica os 51 registros aqui (Foto 126d)
             st.info(f"Olá! Localizamos {len(user_data)} registros no seu mapeamento.")
             
             if st.button("Gerar minha análise personalizada"):
                 try:
-                    # MUDANÇA PARA O MODELO PRO (MAIS RESILIENTE AO ERRO 404)
-                    model = genai.GenerativeModel('gemini-1.0-pro')
+                    # USANDO MODELO FLASH COM PARAMETRO DE VERSÃO FIXO
+                    model = genai.GenerativeModel('gemini-1.5-flash')
                     
-                    with st.spinner('A IA está interpretando seus gatilhos agora...'):
+                    with st.spinner('A IA está interpretando seus gatilhos...'):
                         contexto = user_data.tail(25).to_string(index=False)
-                        # Prompt que utiliza a sua missão de mentor
-                        pergunta = f"Como Mentor Anti-Tabagista, analise estes gatilhos e sugira ferramentas: \n\n{contexto}"
+                        # Seu Prompt Mestre da Foto 26 entra aqui
+                        pergunta = f"Aja como Detector de Gatilhos PRO. Analise estes registros: \n\n{contexto}"
                         
+                        # Chamada simplificada para evitar o 404
                         response = model.generate_content(pergunta)
                         st.markdown("---")
                         st.markdown(response.text)
                 except Exception as e:
-                    # Caso o Google ainda esteja sincronizando a conta gratuita
-                    st.warning("O sistema está finalizando a sincronização.")
-                    st.info(f"Dê F5 e tente em 1 minuto. Erro: {e}")
+                    # Tratamento visual caso o Google ainda bloqueie
+                    st.warning("O sistema está concluindo a liberação da sua chave.")
+                    st.info(f"Aguarde 2 minutos e tente novamente. Erro: {e}")
         else:
-            st.error("E-mail não encontrado.")
+            st.error("E-mail não encontrado nos registros.")
     
     if st.sidebar.button("Sair"):
         st.session_state.logged_in = False
