@@ -6,7 +6,7 @@ st.set_page_config(page_title="Detector de Gatilhos PRO", page_icon="🌿")
 
 # --- CONFIGURAÇÃO DA IA ---
 if "gemini" in st.secrets:
-    # Configuração simples para evitar erros de versão instável
+    # Configuração direta para evitar o erro de versão v1beta
     genai.configure(api_key=st.secrets["gemini"]["api_key"])
 
 def carregar_dados():
@@ -18,7 +18,7 @@ def carregar_dados():
             df['Endereço de e-mail'] = df['Endereço de e-mail'].astype(str).str.strip().str.lower()
         return df
     except Exception as e:
-        st.error(f"Erro ao acessar dados: {e}")
+        st.error(f"Erro ao acessar planilha: {e}")
         return pd.DataFrame()
 
 if "logged_in" not in st.session_state:
@@ -40,34 +40,29 @@ else:
             st.title("Seu Raio-X da Liberdade")
             st.write(f"Olá! Encontramos {len(user_data)} registros no seu mapeamento.")
             
-            # --- SEU PROMPT MESTRE (Baseado nas suas System Instructions) ---
-            prompt_mestre = """
-            Você é o 'DETECTOR DE GATILHOS PRO', uma inteligência especializada em Terapia Anti-Tabagista.
-            Sua missão é analisar os registros de gatilhos fornecidos e sugerir as ferramentas 
-            do seu método (como as Placas de X) para cada situação encontrada.
-            """
+            # --- SEU PROMPT MESTRE ---
+            prompt_mestre = "Você é o DETECTOR DE GATILHOS PRO. Analise os gatilhos e sugira as ferramentas do método."
 
             try:
-                # Usando o nome estável do modelo para evitar o erro 404
-                model = genai.GenerativeModel(
-                    model_name='gemini-1.5-flash',
-                    system_instruction=prompt_mestre
-                )
-                
-                with st.spinner('A IA está analisando seus gatilhos...'):
-                    # Enviamos os últimos 30 registros da Adriana para análise
+                # TENTATIVA 1: Modelo Flash (Mais rápido)
+                model = genai.GenerativeModel('gemini-1.5-flash')
+                with st.spinner('A IA está analisando seus registros...'):
                     contexto = user_data.tail(30).to_string(index=False)
-                    response = model.generate_content(f"Gere o Raio-X para estes dados: \n\n{contexto}")
-                    
+                    response = model.generate_content(f"{prompt_mestre}\n\nDados: {contexto}")
                     st.markdown("---")
                     st.markdown(response.text)
-                        
-            except Exception as e:
-                # Caso a chave ainda esteja em processo de ativação no Google
-                st.warning("O Google ainda está processando sua chave nova. Aguarde um instante e recarregue.")
-                st.info(f"Detalhe técnico: {e}")
+            except Exception:
+                try:
+                    # TENTATIVA 2: Modelo Pro (Mais estável para chaves novas)
+                    model_pro = genai.GenerativeModel('gemini-1.5-pro')
+                    response = model_pro.generate_content(f"{prompt_mestre}\n\nDados: {user_data.tail(20).to_string()}")
+                    st.markdown("---")
+                    st.markdown(response.text)
+                except Exception as e:
+                    st.error("O Google ainda está processando sua chave. Isso pode levar alguns minutos após a criação.")
+                    st.info(f"Aguarde um instante e dê F5. Erro: {e}")
         else:
-            st.error("E-mail não encontrado nos registros.")
+            st.error("E-mail não encontrado.")
     
     if st.sidebar.button("Sair"):
         st.session_state.logged_in = False
