@@ -4,7 +4,7 @@ import pandas as pd
 
 st.set_page_config(page_title="Raio-X da Liberdade", page_icon="🌿")
 
-# CONFIGURAÇÃO DE IA
+# CONFIGURAÇÃO DE IA PRIORITÁRIA (CONTA LIVREDAVONTADE)
 if "gemini" in st.secrets:
     genai.configure(api_key=st.secrets["gemini"]["api_key"])
 
@@ -25,7 +25,7 @@ if "logged_in" not in st.session_state:
 
 if not st.session_state.logged_in:
     st.title("🌿 Bem-vindo ao seu Raio-X")
-    e_input = st.text_input("Seu e-mail:").strip().lower()
+    e_input = st.text_input("Seu e-mail cadastrado:").strip().lower()
     if st.button("Acessar Mapeamento"):
         st.session_state.user_email = e_input
         st.session_state.logged_in = True
@@ -41,26 +41,23 @@ else:
             
             if st.button("Gerar Inteligência Personalizada"):
                 try:
-                    # Inserindo sua PERSONA E MISSÃO da Foto a9a8
-                    instrucao = """
-                    Você é o 'DETECTOR DE GATILHOS PRO', uma inteligência especializada 
-                    em Terapia Anti-Tabagista. Sua missão é analisar os registros e 
-                    sugerir ferramentas práticas para vencer o desejo de fumar.
-                    """
+                    # SUA PERSONA DEFINIDA NA FOTO A9A8
                     model = genai.GenerativeModel(
                         model_name='gemini-1.5-flash',
-                        system_instruction=instrucao
+                        system_instruction="""
+                        Você é o 'DETECTOR DE GATILHOS PRO'. 
+                        Sua missão é analisar os registros de consumo e gatilhos do aluno 
+                        e fornecer uma análise baseada no Método Livre da Vontade de Fumar.
+                        """
                     )
                     
-                    with st.spinner('O mentor está analisando seus gatilhos...'):
+                    with st.spinner('O mentor está analisando seus gatilhos agora...'):
                         contexto = user_data.tail(25).to_string(index=False)
-                        response = model.generate_content(f"Analise estes dados e sugira ferramentas: \n\n{contexto}")
+                        response = model.generate_content(f"Analise estes dados e sugira ferramentas práticas: \n\n{contexto}")
                         st.markdown("---")
                         st.markdown(response.text)
                 except Exception as e:
-                    # Gerencia o tempo de sincronização da foto 5f56
-                    st.warning("O motor da IA está aquecendo nos servidores mundiais.")
-                    st.info("Aguarde um minuto e clique no botão novamente.")
+                    st.info("Aguarde um instante para a IA processar sua análise prioritária.")
         else:
             st.error("E-mail não encontrado.")
     
