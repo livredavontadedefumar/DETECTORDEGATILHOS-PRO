@@ -2,13 +2,14 @@ import streamlit as st
 import google.generativeai as genai
 import pandas as pd
 
-# 1. Configurações Visuais e Identidade
+# 1. Configurações de Identidade e Layout
 st.set_page_config(page_title="Detector de Gatilhos PRO", page_icon="🌿", layout="wide")
+
+# SEU E-MAIL MESTRE
 EMAIL_ADM = "livredavontadedefumar@gmail.com" 
 
-# 2. Conexão Blindada (CORREÇÃO DO ERRO 404)
+# 2. Conexão Blindada (Eliminando o erro 404 v1beta)
 if "gemini" in st.secrets:
-    # Esta linha configura a chave oficial das suas Secrets
     genai.configure(api_key=st.secrets["gemini"]["api_key"])
 
 def carregar_dados():
@@ -20,7 +21,7 @@ def carregar_dados():
             df['Endereço de e-mail'] = df['Endereço de e-mail'].astype(str).str.strip().str.lower()
         return df
     except Exception as e:
-        st.error(f"Erro ao carregar dados: {e}")
+        st.error(f"Erro nos dados: {e}")
         return pd.DataFrame()
 
 # 3. Gerenciamento de Login
@@ -44,7 +45,7 @@ else:
         lista_emails = sorted(df['Endereço de e-mail'].unique().tolist())
         st.sidebar.header("🛡️ Painel ADM")
         aluno_alvo = st.sidebar.selectbox("Escolher aluno para análise:", lista_emails)
-        st.sidebar.info("Modo de Supervisão Ativo")
+        st.sidebar.info("Modo Supervisor Ativo")
     else:
         aluno_alvo = st.session_state.user_email
         st.sidebar.write("🌿 Bem-vindo!")
@@ -57,10 +58,9 @@ else:
         if not user_data.empty:
             st.success(f"Analisando: {aluno_alvo} ({len(user_data)} registros)")
             
-            # BOTÃO PARA ACIONAR A IA
             if st.button(f"Gerar Inteligência para {aluno_alvo}"):
                 try:
-                    # CURA DO ERRO 404: Usando o modelo puro sem forçar v1beta
+                    # AJUSTE DEFINITIVO: Usando apenas o nome estável do modelo
                     model = genai.GenerativeModel('gemini-1.5-flash')
                     
                     with st.spinner('A IA está analisando os registros...'):
@@ -72,11 +72,11 @@ else:
                         st.markdown("---")
                         st.markdown(response.text)
                 except Exception as e:
-                    # Tratamento para propagação da chave (Fotos 17-20)
+                    # Foto 20 e 21: Tempo de propagação da chave
                     st.error("O Google ainda está ativando sua chave criada hoje.")
-                    st.info(f"Dê F5 no app em 2 minutos. Erro técnico: {e}")
+                    st.info(f"Dê F5 no app em 3 minutos. Erro técnico: {e}")
         else:
-            st.error("Nenhum registro encontrado para este e-mail.")
+            st.error("E-mail não encontrado.")
 
     if st.sidebar.button("Sair"):
         st.session_state.logged_in = False
