@@ -11,6 +11,10 @@ def carregar_dados():
     try:
         url_csv = st.secrets["connections"]["gsheets"]["spreadsheet"]
         df = pd.read_csv(url_csv)
+        # LIMPEZA CRUCIAL: Remove espaços e padroniza para minúsculo na planilha toda
+        df.columns = [c.strip() for c in df.columns]
+        if 'Endereço de e-mail' in df.columns:
+            df['Endereço de e-mail'] = df['Endereço de e-mail'].astype(str).str.strip().str.lower()
         return df
     except Exception as e:
         st.error(f"Erro ao acessar dados: {e}")
@@ -29,27 +33,21 @@ if not st.session_state.logged_in:
 else:
     df = carregar_dados()
     if not df.empty:
-        # Força a coluna a ser texto, remove espaços e coloca em minúsculo
-        col_email = 'Endereço de e-mail' 
-        df[col_email] = df[col_email].astype(str).str.strip().str.lower()
-        
-        # Faz a mesma limpeza no e-mail que o usuário digitou
-        email_busca = st.session_state.user_email.strip().lower()
-        
-        user_data = df[df[col_email] == email_busca]
+        # Busca o e-mail digitado (também limpo)
+        user_data = df[df['Endereço de e-mail'] == st.session_state.user_email]
 
         if not user_data.empty:
             st.title("Seu Raio-X da Liberdade")
-            st.write(f"Registros encontrados: {len(user_data)}")
+            st.write(f"Olá! Encontramos {len(user_data)} registros no seu mapeamento.")
             
             model = genai.GenerativeModel('gemini-1.5-pro')
-            with st.spinner('IA analisando gatilhos...'):
-                contexto = user_data.tail(15).to_string(index=False)
-                res = model.generate_content(f"Analise estes registros de gatilhos e dê ferramentas: {contexto}")
+            with st.spinner('A IA está gerando sua análise personalizada...'):
+                contexto = user_data.tail(20).to_string(index=False)
+                res = model.generate_content(f"Analise estes gatilhos e sugira ferramentas: {contexto}")
+                st.markdown("---")
                 st.markdown(res.text)
         else:
-            # Se não encontrar, ele mostra o que tentou buscar para ajudar a conferir
-            st.error(f"E-mail '{st.session_state.user_email}' não encontrado na lista.")
+            st.error(f"O e-mail '{st.session_state.user_email}' não foi encontrado nos registros da aba MAPEAMENTO.")
             if st.button("Tentar outro e-mail"):
                 st.session_state.logged_in = False
                 st.rerun()
