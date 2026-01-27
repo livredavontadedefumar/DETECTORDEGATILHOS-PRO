@@ -2,9 +2,10 @@ import streamlit as st
 import google.generativeai as genai
 import pandas as pd
 
+# 1. Configurações de Interface
 st.set_page_config(page_title="Raio-X da Liberdade", page_icon="🌿")
 
-# 1. Configuração da IA
+# 2. Conexão Blindada com a IA
 if "gemini" in st.secrets:
     genai.configure(api_key=st.secrets["gemini"]["api_key"])
 
@@ -20,7 +21,7 @@ def carregar_dados():
         st.error(f"Erro ao carregar dados: {e}")
         return pd.DataFrame()
 
-# 2. Sistema de Login
+# 3. Fluxo de Login
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
@@ -42,7 +43,7 @@ else:
             
             if st.button("Gerar minha análise personalizada"):
                 try:
-                    # Inserindo sua Persona da Foto 26 para a IA começar a trabalhar
+                    # Inserindo sua Missão de Mentor da Foto 26 diretamente aqui
                     model = genai.GenerativeModel(
                         model_name='gemini-1.5-flash',
                         system_instruction="Você é o DETECTOR DE GATILHOS PRO, uma inteligência especializada em Terapia Anti-Tabagista baseada no método."
@@ -54,7 +55,7 @@ else:
                         st.markdown("---")
                         st.markdown(response.text)
                 except Exception as e:
-                    # Mensagem para o tempo de sincronização do Google (Foto 38)
+                    # Gerencia o tempo de sincronização do Google (visto nas fotos 38 e f093e7eb)
                     st.warning("O sistema está finalizando a ativação da sua análise.")
                     st.info("Aguarde um minuto e clique no botão novamente.")
         else:
