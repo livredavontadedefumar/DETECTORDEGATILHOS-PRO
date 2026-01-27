@@ -2,10 +2,10 @@ import streamlit as st
 import google.generativeai as genai
 import pandas as pd
 
-# 1. Configurações de Interface
+# 1. Configuração da Interface
 st.set_page_config(page_title="Raio-X da Liberdade", page_icon="🌿")
 
-# 2. Conexão Blindada com a IA
+# 2. Conexão Estável com a IA
 if "gemini" in st.secrets:
     genai.configure(api_key=st.secrets["gemini"]["api_key"])
 
@@ -39,27 +39,28 @@ else:
         st.title("Seu Raio-X")
         
         if not user_data.empty:
+            # O sistema já identifica os 51 registros aqui (Foto 38)
             st.info(f"Olá! Localizamos {len(user_data)} registros no seu mapeamento.")
             
             if st.button("Gerar minha análise personalizada"):
                 try:
-                    # Inserindo sua Missão de Mentor da Foto 26 diretamente aqui
-                    model = genai.GenerativeModel(
-                        model_name='gemini-1.5-flash',
-                        system_instruction="Você é o DETECTOR DE GATILHOS PRO, uma inteligência especializada em Terapia Anti-Tabagista baseada no método."
-                    )
+                    # MUDANÇA PARA O MODELO PRO (MAIS RESILIENTE AO ERRO 404)
+                    model = genai.GenerativeModel('gemini-1.0-pro')
                     
-                    with st.spinner('Interpretando seus gatilhos agora...'):
-                        contexto = user_data.tail(30).to_string(index=False)
-                        response = model.generate_content(f"Analise estes registros e sugira ferramentas: \n\n{contexto}")
+                    with st.spinner('A IA está interpretando seus gatilhos agora...'):
+                        contexto = user_data.tail(25).to_string(index=False)
+                        # Prompt que utiliza a sua missão de mentor
+                        pergunta = f"Como Mentor Anti-Tabagista, analise estes gatilhos e sugira ferramentas: \n\n{contexto}"
+                        
+                        response = model.generate_content(pergunta)
                         st.markdown("---")
                         st.markdown(response.text)
                 except Exception as e:
-                    # Gerencia o tempo de sincronização do Google (visto nas fotos 38 e f093e7eb)
-                    st.warning("O sistema está finalizando a ativação da sua análise.")
-                    st.info("Aguarde um minuto e clique no botão novamente.")
+                    # Caso o Google ainda esteja sincronizando a conta gratuita
+                    st.warning("O sistema está finalizando a sincronização.")
+                    st.info(f"Dê F5 e tente em 1 minuto. Erro: {e}")
         else:
-            st.error("E-mail não encontrado nos registros.")
+            st.error("E-mail não encontrado.")
     
     if st.sidebar.button("Sair"):
         st.session_state.logged_in = False
