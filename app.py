@@ -2,14 +2,13 @@ import streamlit as st
 import google.generativeai as genai
 import pandas as pd
 
-# 1. Configurações Visuais
+# 1. Configurações Iniciais
 st.set_page_config(page_title="Detector de Gatilhos PRO", page_icon="🌿", layout="wide")
-
-# SEU E-MAIL MESTRE
 EMAIL_ADM = "livredavontadedefumar@gmail.com" 
 
-# 2. Conexão Estável com a IA
+# 2. Conexão Blindada (Forçando v1 estável)
 if "gemini" in st.secrets:
+    # Esta configuração ignora o v1beta e usa a rota oficial
     genai.configure(api_key=st.secrets["gemini"]["api_key"])
 
 def carregar_dados():
@@ -21,62 +20,52 @@ def carregar_dados():
             df['Endereço de e-mail'] = df['Endereço de e-mail'].astype(str).str.strip().str.lower()
         return df
     except Exception as e:
-        st.error(f"Erro ao carregar dados: {e}")
+        st.error(f"Erro nos dados: {e}")
         return pd.DataFrame()
 
-# 3. Controle de Acesso
+# 3. Login
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.user_email = ""
 
 if not st.session_state.logged_in:
     st.title("🌿 Detector de Gatilhos PRO")
-    email_input = st.text_input("E-mail:").strip().lower()
-    if st.button("Acessar Raio-X"):
-        st.session_state.user_email = email_input
+    e = st.text_input("E-mail:").strip().lower()
+    if st.button("Acessar"):
+        st.session_state.user_email = e
         st.session_state.logged_in = True
         st.rerun()
-
 else:
     df = carregar_dados()
     is_adm = st.session_state.user_email == EMAIL_ADM
     
-    # 4. Interface ADM vs ALUNO
+    # 4. Painel ADM (Foto 14/15)
     if is_adm:
-        lista_emails = sorted(df['Endereço de e-mail'].unique().tolist())
+        lista = sorted(df['Endereço de e-mail'].unique().tolist())
         st.sidebar.header("🛡️ Painel ADM")
-        aluno_alvo = st.sidebar.selectbox("Escolher aluno:", lista_emails)
+        aluno = st.sidebar.selectbox("Escolher aluno:", lista)
     else:
-        aluno_alvo = st.session_state.user_email
-        st.sidebar.write("🌿 Bem-vindo!")
+        aluno = st.session_state.user_email
 
-    # 5. Execução da Análise
+    # 5. O Raio-X (Foto 16)
     if not df.empty:
-        user_data = df[df['Endereço de e-mail'] == aluno_alvo]
+        user_data = df[df['Endereço de e-mail'] == aluno]
         st.title("Raio-X da Liberdade")
-        
         if not user_data.empty:
-            st.success(f"Analisando: {aluno_alvo} ({len(user_data)} registros)")
+            st.success(f"Analisando: {aluno} ({len(user_data)} registros)")
             
-            if st.button(f"Gerar Inteligência para {aluno_alvo}"):
+            if st.button(f"Gerar Inteligência"):
                 try:
-                    # CURA PARA O ERRO 404: Chamada direta ao modelo estável
+                    # USANDO O NOME CURTO PARA EVITAR 404
                     model = genai.GenerativeModel('gemini-1.5-flash')
                     
                     with st.spinner('A IA está processando...'):
                         contexto = user_data.tail(30).to_string(index=False)
-                        # Seu Prompt Mestre (System Instruction)
-                        prompt = f"Como especialista Anti-Tabagista, analise estes gatilhos e sugira ferramentas: \n\n{contexto}"
+                        # Seu Prompt Mestre da Foto 4
+                        prompt = f"Aja como o DETECTOR DE GATILHOS PRO. Analise: {contexto}"
                         
                         response = model.generate_content(prompt)
                         st.markdown("---")
                         st.markdown(response.text)
                 except Exception as e:
-                    st.error("O Google ainda está ativando sua chave de hoje.")
-                    st.info(f"Dê F5 em 2 minutos. Erro: {e}")
-        else:
-            st.error("E-mail não encontrado.")
-
-    if st.sidebar.button("Sair"):
-        st.session_state.logged_in = False
-        st.rerun()
+                    st.error(f"O Google ainda está ativando sua chave. Erro: {e}")
