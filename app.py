@@ -6,7 +6,7 @@ st.set_page_config(page_title="Detector de Gatilhos PRO", page_icon="🌿")
 
 # --- CONFIGURAÇÃO DA IA ---
 if "gemini" in st.secrets:
-    # Configuração simples para evitar erros de versão v1beta
+    # AJUSTE DE SEGURANÇA: Configuração direta para evitar erros de versão v1beta
     genai.configure(api_key=st.secrets["gemini"]["api_key"])
 
 def carregar_dados():
@@ -40,36 +40,38 @@ else:
             st.title("Seu Raio-X da Liberdade")
             st.write(f"Olá! Encontramos {len(user_data)} registros no seu mapeamento.")
             
-            # --- SEU PROMPT MESTRE (Baseado na sua foto) ---
+            # --- SEU PROMPT MESTRE (Integrado da sua foto de System Instructions) ---
             prompt_mestre = """
-            # PERSONA E MISSÃO: Você é o 'DETECTOR DE GATILHOS PRO', uma inteligência especializada em Terapia Anti-Tabagista.
-            Sua missão é analisar registros de consumo de cigarro e fornecer ferramentas práticas para a liberdade do aluno.
+            Você é o 'DETECTOR DE GATILHOS PRO', uma inteligência especializada em Terapia Anti-Tabagista.
+            Sua missão é analisar registros de gatilhos e sugerir as ferramentas do método.
             """
 
             try:
-                # Usando o nome estável do modelo para evitar o erro 404 v1beta
+                # FORÇANDO O MODELO: Usando o nome direto que você configurou no AI Studio
                 model = genai.GenerativeModel(
                     model_name='gemini-1.5-flash',
                     system_instruction=prompt_mestre
                 )
                 
                 with st.spinner('A IA está analisando seus 46 registros...'):
-                    # Pegamos os dados e enviamos como texto
+                    # Transformando os dados da Adriana em texto para a IA
                     contexto = user_data.tail(30).to_string(index=False)
-                    response = model.generate_content(f"Analise estes registros e gere o Raio-X sugerindo as Placas de X: \n\n{contexto}")
+                    
+                    # Chamada simplificada para evitar erro de versão
+                    response = model.generate_content(f"Gere a análise para estes dados: \n\n{contexto}")
                     
                     st.markdown("---")
                     st.markdown(response.text)
                         
             except Exception as e:
-                # Plano B: Se o Flash ainda der 404, tentamos o modelo 1.0 que é universal
+                # Se o Flash falhar, tentamos o Pro como backup imediato
                 try:
-                    model_b = genai.GenerativeModel('gemini-1.0-pro')
-                    response = model_b.generate_content(f"{prompt_mestre}\n\nAnalise: {user_data.tail(20).to_string()}")
+                    model_pro = genai.GenerativeModel('gemini-1.5-pro')
+                    response = model_pro.generate_content(f"{prompt_mestre}\n\nAnalise: {user_data.tail(20).to_string()}")
                     st.markdown("---")
                     st.markdown(response.text)
                 except:
-                    st.error(f"Ocorreu um erro técnico na comunicação. Detalhes: {e}")
+                    st.error(f"Houve um problema de comunicação com o Google. Verifique se a API Key é a nova. Erro: {e}")
         else:
             st.error("E-mail não encontrado.")
     
