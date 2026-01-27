@@ -4,9 +4,8 @@ import pandas as pd
 
 st.set_page_config(page_title="Detector de Gatilhos PRO", page_icon="🌿")
 
-# --- CONEXÃO COM A IA (VERSÃO ESTÁVEL) ---
+# --- CONEXÃO COM A IA ---
 if "gemini" in st.secrets:
-    # Configuração direta para evitar o erro 404 de versão v1beta
     genai.configure(api_key=st.secrets["gemini"]["api_key"])
 
 def carregar_dados():
@@ -34,36 +33,32 @@ if not st.session_state.logged_in:
 else:
     df = carregar_dados()
     if not df.empty:
-        # Filtra os dados da Adriana (drifreitmar@gmail.com)
         user_data = df[df['Endereço de e-mail'] == st.session_state.user_email]
 
         if not user_data.empty:
             st.title("Seu Raio-X da Liberdade")
             st.write(f"Olá! Encontramos {len(user_data)} registros no seu mapeamento.")
             
-            # INSTRUÇÃO DO SISTEMA (Baseada no seu Prompt Mestre)
-            prompt_mestre = "Você é o DETECTOR DE GATILHOS PRO. Analise os gatilhos e sugira as ferramentas do método."
+            # PROMPT COM O SEU MÉTODO
+            prompt_mestre = "Você é o DETECTOR DE GATILHOS PRO. Analise os gatilhos e sugira ferramentas do método."
 
             try:
-                # Usamos o nome simplificado do modelo
-                model = genai.GenerativeModel('gemini-1.5-flash')
+                # MUDANÇA PARA O MODELO MAIS ESTÁVEL DO MUNDO: gemini-1.0-pro
+                model = genai.GenerativeModel('gemini-1.0-pro')
                 
                 with st.spinner('A IA está analisando seus dados...'):
-                    # Enviamos os registros como texto simples
-                    contexto = user_data.tail(30).to_string(index=False)
-                    response = model.generate_content(f"{prompt_mestre}\n\nAnalise estes registros:\n{contexto}")
+                    contexto = user_data.tail(25).to_string(index=False)
+                    # Forçando a resposta sem usar versões beta
+                    response = model.generate_content(f"{prompt_mestre}\n\nDados:\n{contexto}")
                     
                     st.markdown("---")
                     st.markdown(response.text)
             except Exception as e:
-                st.error("O Google ainda não liberou o acesso para sua chave nova. Tente recarregar a página.")
-                st.info(f"Detalhe do erro: {e}")
+                st.error("Erro técnico na comunicação com a IA.")
+                st.info(f"Detalhe para suporte: {e}")
         else:
-            st.error(f"E-mail '{st.session_state.user_email}' não encontrado na aba MAPEAMENTO.")
-            if st.sidebar.button("Trocar E-mail"):
-                st.session_state.logged_in = False
-                st.rerun()
+            st.error(f"E-mail '{st.session_state.user_email}' não encontrado.")
     
-    if st.sidebar.button("Sair"):
+    if st.sidebar.button("Sair / Trocar E-mail"):
         st.session_state.logged_in = False
         st.rerun()
