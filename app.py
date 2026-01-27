@@ -11,7 +11,6 @@ def carregar_dados():
     try:
         url_csv = st.secrets["connections"]["gsheets"]["spreadsheet"]
         df = pd.read_csv(url_csv)
-        # LIMPEZA CRUCIAL: Remove espaços e padroniza para minúsculo na planilha toda
         df.columns = [c.strip() for c in df.columns]
         if 'Endereço de e-mail' in df.columns:
             df['Endereço de e-mail'] = df['Endereço de e-mail'].astype(str).str.strip().str.lower()
@@ -33,31 +32,43 @@ if not st.session_state.logged_in:
 else:
     df = carregar_dados()
     if not df.empty:
-        # Busca o e-mail digitado (também limpo)
         user_data = df[df['Endereço de e-mail'] == st.session_state.user_email]
 
         if not user_data.empty:
             st.title("Seu Raio-X da Liberdade")
             st.write(f"Olá! Encontramos {len(user_data)} registros no seu mapeamento.")
             
-            # AJUSTE AQUI: Mudamos para o modelo 'gemini-1.5-flash' para evitar o erro NotFound
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            # AJUSTE DEFINITIVO: Usando o nome completo do modelo para evitar o Erro 404
+            model = genai.GenerativeModel('models/gemini-1.5-flash')
             
             with st.spinner('A IA está gerando sua análise personalizada...'):
                 try:
-                    # Pegamos os últimos registros para a análise ser focada no momento atual
+                    # Enviamos apenas as colunas relevantes para economizar processamento
                     contexto = user_data.tail(30).to_string(index=False)
                     
-                    # Chamada da IA com instrução clara
-                    prompt = f"Analise estes registros de gatilhos de fumo e sugira as ferramentas adequadas do método para cada situação encontrada: {contexto}"
-                    res = model.generate_content(prompt)
+                    prompt = f"""
+                    Você é um especialista em cessação tabágica. 
+                    Analise os seguintes registros de gatilhos de fumo e sugira as ferramentas 
+                    adequadas para cada situação:
                     
+                    {contexto}
+                    """
+                    
+                    response = model.generate_content(prompt)
                     st.markdown("---")
-                    st.markdown(res.text)
+                    st.markdown(response.text)
+                    
                 except Exception as ai_error:
-                    st.error(f"A IA encontrou um problema ao gerar o texto: {ai_error}")
+                    # Caso o modelo flash ainda dê erro, tentamos o pro como backup automático
+                    try:
+                        model_backup = genai.GenerativeModel('models/gemini-1.5-pro')
+                        response = model_backup.generate_content(prompt)
+                        st.markdown("---")
+                        st.markdown(response.text)
+                    except:
+                        st.error(f"Erro na geração: {ai_error}")
         else:
-            st.error(f"O e-mail '{st.session_state.user_email}' não foi encontrado nos registros da aba MAPEAMENTO.")
+            st.error(f"O e-mail '{st.session_state.user_email}' não foi encontrado.")
             if st.button("Tentar outro e-mail"):
                 st.session_state.logged_in = False
                 st.rerun()
