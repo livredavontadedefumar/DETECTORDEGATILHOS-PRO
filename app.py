@@ -1,14 +1,12 @@
 import streamlit as st
 import google.generativeai as genai
 import pandas as pd
-import os
 
 st.set_page_config(page_title="Detector de Gatilhos PRO", page_icon="🌿")
 
-# --- CONFIGURAÇÃO DA IA (FORÇANDO VERSÃO ESTÁVEL) ---
+# --- CONFIGURAÇÃO DA IA ---
 if "gemini" in st.secrets:
-    # Forçamos o uso da biblioteca para não usar v1beta que está dando erro 404
-    os.environ["GOOGLE_API_KEY"] = st.secrets["gemini"]["api_key"]
+    # Configuração simples para evitar erros de versão v1beta
     genai.configure(api_key=st.secrets["gemini"]["api_key"])
 
 def carregar_dados():
@@ -20,7 +18,7 @@ def carregar_dados():
             df['Endereço de e-mail'] = df['Endereço de e-mail'].astype(str).str.strip().str.lower()
         return df
     except Exception as e:
-        st.error(f"Erro ao acessar dados: {e}")
+        st.error(f"Erro ao acessar planilha: {e}")
         return pd.DataFrame()
 
 if "logged_in" not in st.session_state:
@@ -42,28 +40,36 @@ else:
             st.title("Seu Raio-X da Liberdade")
             st.write(f"Olá! Encontramos {len(user_data)} registros no seu mapeamento.")
             
-            # MUDANÇA NO MOTOR: Usando o nome do modelo sem o prefixo 'models/' 
-            # para testar a compatibilidade direta com a chave de API
-            model = genai.GenerativeModel('gemini-1.5-flash')
-            
-            with st.spinner('A IA está analisando seus gatilhos...'):
-                try:
+            # --- SEU PROMPT MESTRE (Baseado na sua foto) ---
+            prompt_mestre = """
+            # PERSONA E MISSÃO: Você é o 'DETECTOR DE GATILHOS PRO', uma inteligência especializada em Terapia Anti-Tabagista.
+            Sua missão é analisar registros de consumo de cigarro e fornecer ferramentas práticas para a liberdade do aluno.
+            """
+
+            try:
+                # Usando o nome estável do modelo para evitar o erro 404 v1beta
+                model = genai.GenerativeModel(
+                    model_name='gemini-1.5-flash',
+                    system_instruction=prompt_mestre
+                )
+                
+                with st.spinner('A IA está analisando seus 46 registros...'):
+                    # Pegamos os dados e enviamos como texto
                     contexto = user_data.tail(30).to_string(index=False)
-                    prompt = f"Analise estes registros de gatilhos de fumo e sugira as ferramentas do método: {contexto}"
-                    
-                    # Chamada direta sem parâmetros de versão que causam o 404
-                    response = model.generate_content(prompt)
+                    response = model.generate_content(f"Analise estes registros e gere o Raio-X sugerindo as Placas de X: \n\n{contexto}")
                     
                     st.markdown("---")
                     st.markdown(response.text)
-                except Exception as e:
-                    # Se falhar o flash, tentamos o pro 1.0 que é o mais compatível de todos
-                    try:
-                        model_old = genai.GenerativeModel('gemini-1.0-pro')
-                        response = model_old.generate_content(prompt)
-                        st.markdown(response.text)
-                    except:
-                        st.error(f"Houve um problema na comunicação com o Google. Verifique sua API Key nas Secrets. Erro: {e}")
+                        
+            except Exception as e:
+                # Plano B: Se o Flash ainda der 404, tentamos o modelo 1.0 que é universal
+                try:
+                    model_b = genai.GenerativeModel('gemini-1.0-pro')
+                    response = model_b.generate_content(f"{prompt_mestre}\n\nAnalise: {user_data.tail(20).to_string()}")
+                    st.markdown("---")
+                    st.markdown(response.text)
+                except:
+                    st.error(f"Ocorreu um erro técnico na comunicação. Detalhes: {e}")
         else:
             st.error("E-mail não encontrado.")
     
