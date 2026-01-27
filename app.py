@@ -6,7 +6,7 @@ st.set_page_config(page_title="Detector de Gatilhos PRO", page_icon="🌿")
 
 # --- CONFIGURAÇÃO DA IA ---
 if "gemini" in st.secrets:
-    # Usando a configuração mais simples para evitar o erro 404
+    # Configuração simples para evitar erros de versão instável
     genai.configure(api_key=st.secrets["gemini"]["api_key"])
 
 def carregar_dados():
@@ -18,7 +18,7 @@ def carregar_dados():
             df['Endereço de e-mail'] = df['Endereço de e-mail'].astype(str).str.strip().str.lower()
         return df
     except Exception as e:
-        st.error(f"Erro ao acessar planilha: {e}")
+        st.error(f"Erro ao acessar dados: {e}")
         return pd.DataFrame()
 
 if "logged_in" not in st.session_state:
@@ -40,30 +40,34 @@ else:
             st.title("Seu Raio-X da Liberdade")
             st.write(f"Olá! Encontramos {len(user_data)} registros no seu mapeamento.")
             
-            # --- CONFIGURAÇÃO DO MODELO ---
-            # O System Instruction vai aqui para a IA saber como agir
-            model = genai.GenerativeModel(
-                model_name='gemini-1.5-flash',
-                system_instruction="Você é o DETECTOR DE GATILHOS PRO. Analise os registros de fumo e sugira as ferramentas do método para cada gatilho encontrado."
-            )
+            # --- SEU PROMPT MESTRE (Baseado nas suas System Instructions) ---
+            prompt_mestre = """
+            Você é o 'DETECTOR DE GATILHOS PRO', uma inteligência especializada em Terapia Anti-Tabagista.
+            Sua missão é analisar os registros de gatilhos fornecidos e sugerir as ferramentas 
+            do seu método (como as Placas de X) para cada situação encontrada.
+            """
 
             try:
-                with st.spinner('A IA está analisando seus 46 registros...'):
-                    # Transformamos os dados em texto para a IA ler
+                # Usando o nome estável do modelo para evitar o erro 404
+                model = genai.GenerativeModel(
+                    model_name='gemini-1.5-flash',
+                    system_instruction=prompt_mestre
+                )
+                
+                with st.spinner('A IA está analisando seus gatilhos...'):
+                    # Enviamos os últimos 30 registros da Adriana para análise
                     contexto = user_data.tail(30).to_string(index=False)
-                    
-                    # Chamada simplificada para evitar erro de versão da API
                     response = model.generate_content(f"Gere o Raio-X para estes dados: \n\n{contexto}")
                     
                     st.markdown("---")
                     st.markdown(response.text)
                         
             except Exception as e:
-                # Caso o Google ainda esteja ativando a chave
-                st.warning("O Google ainda está ativando sua chave nova. Aguarde 1 minuto e recarregue a página.")
-                st.info(f"Detalhe: {e}")
+                # Caso a chave ainda esteja em processo de ativação no Google
+                st.warning("O Google ainda está processando sua chave nova. Aguarde um instante e recarregue.")
+                st.info(f"Detalhe técnico: {e}")
         else:
-            st.error("E-mail não encontrado.")
+            st.error("E-mail não encontrado nos registros.")
     
     if st.sidebar.button("Sair"):
         st.session_state.logged_in = False
