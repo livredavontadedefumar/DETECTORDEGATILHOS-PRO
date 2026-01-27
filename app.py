@@ -9,7 +9,6 @@ if "gemini" in st.secrets:
 
 def carregar_dados():
     try:
-        # Lê o link CSV direto das secrets
         url_csv = st.secrets["connections"]["gsheets"]["spreadsheet"]
         df = pd.read_csv(url_csv)
         return df
@@ -30,22 +29,30 @@ if not st.session_state.logged_in:
 else:
     df = carregar_dados()
     if not df.empty:
-        # Ajuste o nome da coluna se necessário para bater com sua planilha
+        # Força a coluna a ser texto, remove espaços e coloca em minúsculo
         col_email = 'Endereço de e-mail' 
         df[col_email] = df[col_email].astype(str).str.strip().str.lower()
-        user_data = df[df[col_email] == st.session_state.user_email]
+        
+        # Faz a mesma limpeza no e-mail que o usuário digitou
+        email_busca = st.session_state.user_email.strip().lower()
+        
+        user_data = df[df[col_email] == email_busca]
 
         if not user_data.empty:
             st.title("Seu Raio-X da Liberdade")
-            st.write(f"Registros: {len(user_data)}")
+            st.write(f"Registros encontrados: {len(user_data)}")
             
             model = genai.GenerativeModel('gemini-1.5-pro')
             with st.spinner('IA analisando gatilhos...'):
                 contexto = user_data.tail(15).to_string(index=False)
-                res = model.generate_content(f"Analise estes gatilhos e dê ferramentas: {contexto}")
+                res = model.generate_content(f"Analise estes registros de gatilhos e dê ferramentas: {contexto}")
                 st.markdown(res.text)
         else:
-            st.error("E-mail não encontrado nos registros.")
+            # Se não encontrar, ele mostra o que tentou buscar para ajudar a conferir
+            st.error(f"E-mail '{st.session_state.user_email}' não encontrado na lista.")
+            if st.button("Tentar outro e-mail"):
+                st.session_state.logged_in = False
+                st.rerun()
     
     if st.sidebar.button("Sair"):
         st.session_state.logged_in = False
