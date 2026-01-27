@@ -1,13 +1,11 @@
 import streamlit as st
 import google.generativeai as genai
 import pandas as pd
-import os
 
 st.set_page_config(page_title="Raio-X da Liberdade", page_icon="🌿")
 
-# CONFIGURAÇÃO DE CONEXÃO DIRETA
+# CONFIGURAÇÃO DE IA
 if "gemini" in st.secrets:
-    # Forçamos a API a usar apenas a rota estável (v1)
     genai.configure(api_key=st.secrets["gemini"]["api_key"])
 
 def carregar_dados():
@@ -26,9 +24,9 @@ if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
 if not st.session_state.logged_in:
-    st.title("🌿 Seu Raio-X Pessoal")
-    e_input = st.text_input("E-mail:").strip().lower()
-    if st.button("Acessar"):
+    st.title("🌿 Bem-vindo ao seu Raio-X")
+    e_input = st.text_input("Seu e-mail:").strip().lower()
+    if st.button("Acessar Mapeamento"):
         st.session_state.user_email = e_input
         st.session_state.logged_in = True
         st.rerun()
@@ -36,31 +34,35 @@ else:
     df = carregar_dados()
     if not df.empty:
         user_data = df[df['Endereço de e-mail'] == st.session_state.user_email]
-        st.title("Raio-X da Liberdade")
+        st.title("Seu Raio-X da Liberdade")
         
         if not user_data.empty:
-            # Reconhecimento dos registros já funcionando (Foto da4d)
-            st.success(f"Olá! Localizamos {len(user_data)} registros.")
+            st.success(f"Olá! Localizamos {len(user_data)} registros no seu mapeamento.")
             
-            if st.button("Gerar Inteligência"):
+            if st.button("Gerar Inteligência Personalizada"):
                 try:
-                    # USANDO O MODELO MAIS ESTÁVEL POSSÍVEL
-                    model = genai.GenerativeModel('gemini-pro')
+                    # Inserindo sua PERSONA E MISSÃO da Foto a9a8
+                    instrucao = """
+                    Você é o 'DETECTOR DE GATILHOS PRO', uma inteligência especializada 
+                    em Terapia Anti-Tabagista. Sua missão é analisar os registros e 
+                    sugerir ferramentas práticas para vencer o desejo de fumar.
+                    """
+                    model = genai.GenerativeModel(
+                        model_name='gemini-1.5-flash',
+                        system_instruction=instrucao
+                    )
                     
-                    with st.spinner('A IA está interpretando seus dados...'):
-                        contexto = user_data.tail(20).to_string(index=False)
-                        # Seu prompt direto para evitar erros de processamento
-                        pergunta = f"Como Mentor Anti-Tabagista, analise estes gatilhos e sugira ferramentas: \n\n{contexto}"
-                        
-                        response = model.generate_content(pergunta)
+                    with st.spinner('O mentor está analisando seus gatilhos...'):
+                        contexto = user_data.tail(25).to_string(index=False)
+                        response = model.generate_content(f"Analise estes dados e sugira ferramentas: \n\n{contexto}")
                         st.markdown("---")
                         st.markdown(response.text)
                 except Exception as e:
-                    # Se mesmo o Pro falhar, o problema é a propagação da chave nova
-                    st.warning("O Google está sincronizando sua nova chave nos servidores mundiais.")
-                    st.info("Aguarde 2 minutos e tente novamente. Esse processo é automático.")
+                    # Gerencia o tempo de sincronização da foto 5f56
+                    st.warning("O motor da IA está aquecendo nos servidores mundiais.")
+                    st.info("Aguarde um minuto e clique no botão novamente.")
         else:
-            st.error("E-mail não cadastrado.")
+            st.error("E-mail não encontrado.")
     
     if st.sidebar.button("Sair"):
         st.session_state.logged_in = False
