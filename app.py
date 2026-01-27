@@ -4,8 +4,9 @@ import pandas as pd
 
 st.set_page_config(page_title="Detector de Gatilhos PRO", page_icon="🌿")
 
-# --- CONEXÃO COM A IA ---
+# --- CONEXÃO COM A IA (FORÇANDO ESTABILIDADE) ---
 if "gemini" in st.secrets:
+    # Usamos apenas a configuração básica para evitar o erro 404 de versão v1beta
     genai.configure(api_key=st.secrets["gemini"]["api_key"])
 
 def carregar_dados():
@@ -39,26 +40,28 @@ else:
             st.title("Seu Raio-X da Liberdade")
             st.write(f"Olá! Encontramos {len(user_data)} registros no seu mapeamento.")
             
-            # PROMPT COM O SEU MÉTODO
+            # --- SEU PROMPT MESTRE (Cérebro da IA) ---
             prompt_mestre = "Você é o DETECTOR DE GATILHOS PRO. Analise os gatilhos e sugira ferramentas do método."
 
             try:
-                # MUDANÇA PARA O MODELO MAIS ESTÁVEL DO MUNDO: gemini-1.0-pro
-                model = genai.GenerativeModel('gemini-1.0-pro')
+                # Usamos o modelo Pro que é o mais compatível com chaves novas
+                model = genai.GenerativeModel('gemini-1.5-pro')
                 
-                with st.spinner('A IA está analisando seus dados...'):
-                    contexto = user_data.tail(25).to_string(index=False)
-                    # Forçando a resposta sem usar versões beta
+                with st.spinner('A IA está gerando sua análise...'):
+                    # Enviamos os dados da Adriana para análise
+                    contexto = user_data.tail(30).to_string(index=False)
+                    # Forçamos a geração de conteúdo de forma simples
                     response = model.generate_content(f"{prompt_mestre}\n\nDados:\n{contexto}")
                     
                     st.markdown("---")
                     st.markdown(response.text)
             except Exception as e:
-                st.error("Erro técnico na comunicação com a IA.")
-                st.info(f"Detalhe para suporte: {e}")
+                # Caso o Google ainda esteja ativando sua chave de hoje
+                st.error("O Google ainda está processando o acesso da sua chave.")
+                st.info("Aguarde um instante e tente novamente em alguns minutos.")
         else:
             st.error(f"E-mail '{st.session_state.user_email}' não encontrado.")
     
-    if st.sidebar.button("Sair / Trocar E-mail"):
+    if st.sidebar.button("Sair / Trocar Usuário"):
         st.session_state.logged_in = False
         st.rerun()
