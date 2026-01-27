@@ -2,11 +2,10 @@ import streamlit as st
 import google.generativeai as genai
 import pandas as pd
 
-st.set_page_config(page_title="Detector de Gatilhos PRO", page_icon="🌿")
+st.set_page_config(page_title="Detector de Gatilhos PRO", page_icon="🌿", layout="wide")
 
-# --- CONEXÃO COM A IA (FORÇANDO ESTABILIDADE) ---
+# --- CONEXÃO COM A IA ---
 if "gemini" in st.secrets:
-    # Usamos apenas a configuração básica para evitar o erro 404 de versão v1beta
     genai.configure(api_key=st.secrets["gemini"]["api_key"])
 
 def carregar_dados():
@@ -21,47 +20,38 @@ def carregar_dados():
         st.error(f"Erro ao carregar os registros: {e}")
         return pd.DataFrame()
 
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
+# --- INTERFACE ---
+st.title("🌿 Detector de Gatilhos PRO")
 
-if not st.session_state.logged_in:
-    st.title("🌿 Detector de Gatilhos PRO")
-    email_input = st.text_input("Digite seu e-mail cadastrado:").strip().lower()
-    if st.button("Acessar Raio-X"):
-        st.session_state.user_email = email_input
-        st.session_state.logged_in = True
-        st.rerun()
-else:
-    df = carregar_dados()
-    if not df.empty:
-        user_data = df[df['Endereço de e-mail'] == st.session_state.user_email]
+df = carregar_dados()
 
-        if not user_data.empty:
-            st.title("Seu Raio-X da Liberdade")
-            st.write(f"Olá! Encontramos {len(user_data)} registros no seu mapeamento.")
+if not df.empty:
+    # Lista de e-mails únicos para o Modo Administrador
+    lista_emails = sorted(df['Endereço de e-mail'].unique().tolist())
+    
+    st.sidebar.header("Painel de Controle")
+    # Você escolhe o aluno aqui
+    usuario_selecionado = st.sidebar.selectbox("Selecionar Aluno para Análise:", lista_emails)
+    
+    if usuario_selecionado:
+        user_data = df[df['Endereço de e-mail'] == usuario_selecionado]
+        
+        st.subheader(f"Raio-X: {usuario_selecionado}")
+        st.info(f"Encontramos {len(user_data)} registros no mapeamento deste aluno.")
+        
+        prompt_mestre = "Você é o DETECTOR DE GATILHOS PRO. Analise os gatilhos e sugira ferramentas do método."
+
+        try:
+            model = genai.GenerativeModel('gemini-1.5-pro')
             
-            # --- SEU PROMPT MESTRE (Cérebro da IA) ---
-            prompt_mestre = "Você é o DETECTOR DE GATILHOS PRO. Analise os gatilhos e sugira ferramentas do método."
-
-            try:
-                # Usamos o modelo Pro que é o mais compatível com chaves novas
-                model = genai.GenerativeModel('gemini-1.5-pro')
-                
-                with st.spinner('A IA está gerando sua análise...'):
-                    # Enviamos os dados da Adriana para análise
+            if st.button(f"Gerar Análise para {usuario_selecionado}"):
+                with st.spinner('A IA está processando os dados...'):
                     contexto = user_data.tail(30).to_string(index=False)
-                    # Forçamos a geração de conteúdo de forma simples
                     response = model.generate_content(f"{prompt_mestre}\n\nDados:\n{contexto}")
-                    
                     st.markdown("---")
                     st.markdown(response.text)
-            except Exception as e:
-                # Caso o Google ainda esteja ativando sua chave de hoje
-                st.error("O Google ainda está processando o acesso da sua chave.")
-                st.info("Aguarde um instante e tente novamente em alguns minutos.")
-        else:
-            st.error(f"E-mail '{st.session_state.user_email}' não encontrado.")
-    
-    if st.sidebar.button("Sair / Trocar Usuário"):
-        st.session_state.logged_in = False
-        st.rerun()
+        except Exception as e:
+            st.error("O Google ainda está processando o acesso da sua chave nova.")
+            st.info("Aguarde mais alguns instantes. Esse processo é normal para chaves criadas hoje.")
+else:
+    st.warning("Aguardando carregamento da base de dados...")
