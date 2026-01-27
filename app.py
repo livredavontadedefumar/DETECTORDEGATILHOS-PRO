@@ -6,7 +6,7 @@ st.set_page_config(page_title="Detector de Gatilhos PRO", page_icon="🌿")
 
 # --- CONFIGURAÇÃO DA IA ---
 if "gemini" in st.secrets:
-    # Configuração direta para evitar conflitos de versão v1beta
+    # Usando a configuração mais simples para evitar o erro 404
     genai.configure(api_key=st.secrets["gemini"]["api_key"])
 
 def carregar_dados():
@@ -40,31 +40,28 @@ else:
             st.title("Seu Raio-X da Liberdade")
             st.write(f"Olá! Encontramos {len(user_data)} registros no seu mapeamento.")
             
-            # --- SEU PROMPT MESTRE (Integrado da sua foto) ---
-            prompt_mestre = """
-            # PERSONA E MISSÃO Você é o "DETECTOR DE GATILHOS PRO", uma inteligência especializada em Terapia Anti-Tabagista baseada no método de...
-            (RECOLE AQUI TODO O SEU TEXTO DAS SYSTEM INSTRUCTIONS DA FOTO)
-            """
+            # --- CONFIGURAÇÃO DO MODELO ---
+            # O System Instruction vai aqui para a IA saber como agir
+            model = genai.GenerativeModel(
+                model_name='gemini-1.5-flash',
+                system_instruction="Você é o DETECTOR DE GATILHOS PRO. Analise os registros de fumo e sugira as ferramentas do método para cada gatilho encontrado."
+            )
 
             try:
-                # Mudança técnica: Usando o nome do modelo sem prefixos que causam o 404
-                model = genai.GenerativeModel(
-                    model_name='gemini-1.5-flash',
-                    system_instruction=prompt_mestre
-                )
-                
                 with st.spinner('A IA está analisando seus 46 registros...'):
+                    # Transformamos os dados em texto para a IA ler
                     contexto = user_data.tail(30).to_string(index=False)
-                    # Forçando a geração simplificada
+                    
+                    # Chamada simplificada para evitar erro de versão da API
                     response = model.generate_content(f"Gere o Raio-X para estes dados: \n\n{contexto}")
                     
                     st.markdown("---")
                     st.markdown(response.text)
                         
             except Exception as e:
-                # Plano B de Segurança: Se o Flash ainda falhar, tentamos o Pro ou avisamos a causa real
-                st.error("O Google está demorando para ativar sua nova chave. Aguarde 2 minutos e dê F5 na página.")
-                st.info(f"Detalhe técnico: {e}")
+                # Caso o Google ainda esteja ativando a chave
+                st.warning("O Google ainda está ativando sua chave nova. Aguarde 1 minuto e recarregue a página.")
+                st.info(f"Detalhe: {e}")
         else:
             st.error("E-mail não encontrado.")
     
