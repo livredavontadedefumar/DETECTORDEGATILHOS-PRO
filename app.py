@@ -2,11 +2,11 @@ import streamlit as st
 import google.generativeai as genai
 import pandas as pd
 
-# Configuração da página
+# 1. Configuração da página
 st.set_page_config(page_title="Raio-X da Liberdade", page_icon="🌿")
 
-# CONFIGURAÇÃO DE IA PRIORITÁRIA (CONTA LIVREDAVONTADE)
-# Ajuste cirúrgico: Garantindo que o app use a chave do projeto DETECTOR DE GATILHOS (foto 9761)
+# 2. CONFIGURAÇÃO DE IA PRIORITÁRIA (CONTA LIVREDAVONTADE)
+# Vinculado ao projeto DETECTOR DE GATILHOS (foto 43a8)
 if "gemini" in st.secrets:
     genai.configure(api_key=st.secrets["gemini"]["api_key"])
 
@@ -22,6 +22,7 @@ def carregar_dados():
         st.error(f"Erro nos dados: {e}")
         return pd.DataFrame()
 
+# 3. Gerenciamento de Login
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
@@ -41,12 +42,12 @@ else:
         if not user_data.empty:
             st.success(f"Olá! Localizamos {len(user_data)} registros no seu mapeamento.")
             
+            # 4. BOTÃO DE GERAÇÃO COM AJUSTE PARA ERRO 404 (FOTO 915e)
             if st.button("Gerar Inteligência Personalizada"):
-                # Ajuste cirúrgico: Movido para fora do try para capturar erros reais no log se houver
                 try:
-                    # Garantindo o uso do gemini-1.5-flash que reconhece o faturamento (foto 061f)
+                    # 'models/gemini-1.5-flash' é o caminho oficial para contas pagas
                     model = genai.GenerativeModel(
-                        model_name='gemini-1.5-flash',
+                        model_name='models/gemini-1.5-flash',
                         system_instruction="""
                         Você é o 'DETECTOR DE GATILHOS PRO'. 
                         Sua missão é analisar os registros de consumo e gatilhos do aluno 
@@ -56,19 +57,19 @@ else:
                     
                     with st.spinner('O mentor está analisando seus gatilhos agora...'):
                         contexto = user_data.tail(25).to_string(index=False)
-                        # Chamada simplificada para evitar o erro de depreciação (foto 6615)
+                        # Chamada direta utilizando o faturamento ativo (foto 6a5a)
                         response = model.generate_content(f"Analise estes dados e sugira ferramentas práticas: \n\n{contexto}")
                         
                         if response.text:
                             st.markdown("---")
                             st.markdown(response.text)
                         else:
-                            st.warning("A IA processou, mas não retornou texto. Verifique os créditos.")
+                            st.warning("A IA processou, mas o retorno veio vazio. Tente novamente.")
 
                 except Exception as e:
-                    # Se houver erro de cota ou faturamento, agora ele aparecerá aqui para sabermos exatamente o que é
-                    st.error(f"Erro técnico: {e}")
-                    st.info("Aguarde um instante para a IA processar sua análise prioritária.")
+                    # Exibe o erro real caso o Google ainda esteja processando o faturamento
+                    st.error(f"Nota: A IA está sendo ativada. Detalhe: {e}")
+                    st.info("Se o erro persistir, aguarde 5 minutos para a sincronização do faturamento.")
         else:
             st.error("E-mail não encontrado.")
     
