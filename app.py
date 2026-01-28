@@ -1,16 +1,18 @@
 import streamlit as st
 import google.generativeai as genai
+from google.generativeai import types
 import pandas as pd
 import os
 
 # 1. Configuração da página
 st.set_page_config(page_title="Raio-X da Liberdade", page_icon="🌿")
 
-# 2. CONFIGURAÇÃO DE IA COM FORÇAMENTO DE VERSÃO ESTÁVEL
+# 2. CONFIGURAÇÃO DE IA PRIORITÁRIA (CONTA LIVREDAVONTADE)
+# Forçamos a versão 'v1' no ambiente para matar o erro 404 (foto e1c3)
+os.environ["GOOGLE_API_VERSION"] = "v1"
+
 if "gemini" in st.secrets:
     api_key = st.secrets["gemini"]["api_key"]
-    # Forçamos o sistema a ignorar o v1beta que causa o erro 404 (foto 2837)
-    os.environ["GOOGLE_API_VERSION"] = "v1" 
     genai.configure(api_key=api_key)
 
 def carregar_dados():
@@ -47,7 +49,7 @@ else:
             
             if st.button("Gerar Inteligência Personalizada"):
                 try:
-                    # Chamada explícita ao modelo estável compatível com faturamento (foto 6a5a)
+                    # Usamos o modelo flash estável que reconhece o faturamento (foto 061f)
                     model = genai.GenerativeModel(
                         model_name='gemini-1.5-flash',
                         system_instruction="""
@@ -59,16 +61,18 @@ else:
                     
                     with st.spinner('O mentor está analisando seus gatilhos agora...'):
                         contexto = user_data.tail(25).to_string(index=False)
-                        # Este comando utilizará o bônus de R$ 1.904,08 primeiro (foto 2a0c)
+                        # Chamada que utiliza os créditos confirmados na foto 2a0c
                         response = model.generate_content(f"Analise estes dados e sugira ferramentas práticas: \n\n{contexto}")
                         
                         if response.text:
                             st.markdown("---")
                             st.markdown(response.text)
+                        else:
+                            st.warning("IA processou, mas o retorno foi vazio. Tente novamente.")
 
                 except Exception as e:
-                    # Se o erro 404 persistir, o sistema mostrará este detalhe
-                    st.error(f"Sincronizando faturamento. Tente novamente em instantes. Detalhe: {e}")
+                    # Captura o erro real para o suporte se o Google ainda estiver processando o Pix
+                    st.error(f"Aguarde a ativação final do Google (pode levar 5 min). Erro: {e}")
         else:
             st.error("E-mail não encontrado.")
     
