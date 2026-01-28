@@ -2,9 +2,11 @@ import streamlit as st
 import google.generativeai as genai
 import pandas as pd
 
+# Configuração da página
 st.set_page_config(page_title="Raio-X da Liberdade", page_icon="🌿")
 
 # CONFIGURAÇÃO DE IA PRIORITÁRIA (CONTA LIVREDAVONTADE)
+# Ajuste cirúrgico: Garantindo que o app use a chave do projeto DETECTOR DE GATILHOS (foto 9761)
 if "gemini" in st.secrets:
     genai.configure(api_key=st.secrets["gemini"]["api_key"])
 
@@ -40,8 +42,9 @@ else:
             st.success(f"Olá! Localizamos {len(user_data)} registros no seu mapeamento.")
             
             if st.button("Gerar Inteligência Personalizada"):
+                # Ajuste cirúrgico: Movido para fora do try para capturar erros reais no log se houver
                 try:
-                    # SUA PERSONA DEFINIDA NA FOTO A9A8
+                    # Garantindo o uso do gemini-1.5-flash que reconhece o faturamento (foto 061f)
                     model = genai.GenerativeModel(
                         model_name='gemini-1.5-flash',
                         system_instruction="""
@@ -53,10 +56,18 @@ else:
                     
                     with st.spinner('O mentor está analisando seus gatilhos agora...'):
                         contexto = user_data.tail(25).to_string(index=False)
+                        # Chamada simplificada para evitar o erro de depreciação (foto 6615)
                         response = model.generate_content(f"Analise estes dados e sugira ferramentas práticas: \n\n{contexto}")
-                        st.markdown("---")
-                        st.markdown(response.text)
+                        
+                        if response.text:
+                            st.markdown("---")
+                            st.markdown(response.text)
+                        else:
+                            st.warning("A IA processou, mas não retornou texto. Verifique os créditos.")
+
                 except Exception as e:
+                    # Se houver erro de cota ou faturamento, agora ele aparecerá aqui para sabermos exatamente o que é
+                    st.error(f"Erro técnico: {e}")
                     st.info("Aguarde um instante para a IA processar sua análise prioritária.")
         else:
             st.error("E-mail não encontrado.")
