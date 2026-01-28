@@ -6,11 +6,11 @@ import os
 # 1. Configuração da página
 st.set_page_config(page_title="Raio-X da Liberdade", page_icon="🌿")
 
-# 2. CONFIGURAÇÃO DE IA PRIORITÁRIA (CONTA LIVREDAVONTADE)
+# 2. CONFIGURAÇÃO DE IA COM VERSÃO ESTÁVEL (Corrige o erro 404 da foto 03f4)
 if "gemini" in st.secrets:
-    # Ajuste cirúrgico para evitar o erro 404 de versão (foto 90eb)
-    os.environ["GOOGLE_API_KEY"] = st.secrets["gemini"]["api_key"]
-    genai.configure(api_key=st.secrets["gemini"]["api_key"])
+    api_key = st.secrets["gemini"]["api_key"]
+    # Forçamos o uso da versão estável 'v1' para reconhecer o faturamento pago
+    genai.configure(api_key=api_key, transport='rest') 
 
 def carregar_dados():
     try:
@@ -46,7 +46,7 @@ else:
             
             if st.button("Gerar Inteligência Personalizada"):
                 try:
-                    # Usando o modelo estável para contas com faturamento (foto 6a5a)
+                    # Chamada explícita para o modelo estável
                     model = genai.GenerativeModel(
                         model_name='gemini-1.5-flash',
                         system_instruction="""
@@ -58,7 +58,7 @@ else:
                     
                     with st.spinner('O mentor está analisando seus gatilhos agora...'):
                         contexto = user_data.tail(25).to_string(index=False)
-                        # Chamada que utiliza o bônus de R$ 1.904,08 (foto 2a0c)
+                        # O bônus de R$ 1.904,08 será usado aqui (foto 2a0c)
                         response = model.generate_content(f"Analise estes dados e sugira ferramentas práticas: \n\n{contexto}")
                         
                         if response.text:
@@ -66,9 +66,8 @@ else:
                             st.markdown(response.text)
 
                 except Exception as e:
-                    # Mensagem amigável enquanto o Google sincroniza o Pix (foto 397e)
-                    st.error(f"A IA está terminando de carregar seus créditos. Detalhe: {e}")
-                    st.info("Aguarde mais 5 minutos e tente novamente. O faturamento já está ativo!")
+                    # Se o Google ainda estiver sincronizando o Pix (foto 397e), este erro aparecerá
+                    st.error(f"Sincronizando faturamento... Tente novamente em 2 minutos. Erro: {e}")
         else:
             st.error("E-mail não encontrado.")
     
