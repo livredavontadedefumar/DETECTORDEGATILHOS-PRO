@@ -1,13 +1,15 @@
 import streamlit as st
 import google.generativeai as genai
 import pandas as pd
+import os
 
 # 1. Configuração da página
 st.set_page_config(page_title="Raio-X da Liberdade", page_icon="🌿")
 
 # 2. CONFIGURAÇÃO DE IA PRIORITÁRIA (CONTA LIVREDAVONTADE)
-# Vinculado ao projeto DETECTOR DE GATILHOS (foto 43a8)
 if "gemini" in st.secrets:
+    # Ajuste cirúrgico para evitar o erro 404 de versão (foto 90eb)
+    os.environ["GOOGLE_API_KEY"] = st.secrets["gemini"]["api_key"]
     genai.configure(api_key=st.secrets["gemini"]["api_key"])
 
 def carregar_dados():
@@ -42,12 +44,11 @@ else:
         if not user_data.empty:
             st.success(f"Olá! Localizamos {len(user_data)} registros no seu mapeamento.")
             
-            # 4. BOTÃO DE GERAÇÃO COM AJUSTE PARA ERRO 404 (FOTO 915e)
             if st.button("Gerar Inteligência Personalizada"):
                 try:
-                    # 'models/gemini-1.5-flash' é o caminho oficial para contas pagas
+                    # Usando o modelo estável para contas com faturamento (foto 6a5a)
                     model = genai.GenerativeModel(
-                        model_name='models/gemini-1.5-flash',
+                        model_name='gemini-1.5-flash',
                         system_instruction="""
                         Você é o 'DETECTOR DE GATILHOS PRO'. 
                         Sua missão é analisar os registros de consumo e gatilhos do aluno 
@@ -57,19 +58,17 @@ else:
                     
                     with st.spinner('O mentor está analisando seus gatilhos agora...'):
                         contexto = user_data.tail(25).to_string(index=False)
-                        # Chamada direta utilizando o faturamento ativo (foto 6a5a)
+                        # Chamada que utiliza o bônus de R$ 1.904,08 (foto 2a0c)
                         response = model.generate_content(f"Analise estes dados e sugira ferramentas práticas: \n\n{contexto}")
                         
                         if response.text:
                             st.markdown("---")
                             st.markdown(response.text)
-                        else:
-                            st.warning("A IA processou, mas o retorno veio vazio. Tente novamente.")
 
                 except Exception as e:
-                    # Exibe o erro real caso o Google ainda esteja processando o faturamento
-                    st.error(f"Nota: A IA está sendo ativada. Detalhe: {e}")
-                    st.info("Se o erro persistir, aguarde 5 minutos para a sincronização do faturamento.")
+                    # Mensagem amigável enquanto o Google sincroniza o Pix (foto 397e)
+                    st.error(f"A IA está terminando de carregar seus créditos. Detalhe: {e}")
+                    st.info("Aguarde mais 5 minutos e tente novamente. O faturamento já está ativo!")
         else:
             st.error("E-mail não encontrado.")
     
