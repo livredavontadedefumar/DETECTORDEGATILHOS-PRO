@@ -6,11 +6,12 @@ import os
 # 1. Configuração da página
 st.set_page_config(page_title="Raio-X da Liberdade", page_icon="🌿")
 
-# 2. CONFIGURAÇÃO DE IA COM VERSÃO ESTÁVEL (Corrige o erro 404 da foto 03f4)
+# 2. CONFIGURAÇÃO DE IA COM FORÇAMENTO DE VERSÃO ESTÁVEL
 if "gemini" in st.secrets:
     api_key = st.secrets["gemini"]["api_key"]
-    # Forçamos o uso da versão estável 'v1' para reconhecer o faturamento pago
-    genai.configure(api_key=api_key, transport='rest') 
+    # Forçamos o sistema a ignorar o v1beta que causa o erro 404 (foto 2837)
+    os.environ["GOOGLE_API_VERSION"] = "v1" 
+    genai.configure(api_key=api_key)
 
 def carregar_dados():
     try:
@@ -46,7 +47,7 @@ else:
             
             if st.button("Gerar Inteligência Personalizada"):
                 try:
-                    # Chamada explícita para o modelo estável
+                    # Chamada explícita ao modelo estável compatível com faturamento (foto 6a5a)
                     model = genai.GenerativeModel(
                         model_name='gemini-1.5-flash',
                         system_instruction="""
@@ -58,7 +59,7 @@ else:
                     
                     with st.spinner('O mentor está analisando seus gatilhos agora...'):
                         contexto = user_data.tail(25).to_string(index=False)
-                        # O bônus de R$ 1.904,08 será usado aqui (foto 2a0c)
+                        # Este comando utilizará o bônus de R$ 1.904,08 primeiro (foto 2a0c)
                         response = model.generate_content(f"Analise estes dados e sugira ferramentas práticas: \n\n{contexto}")
                         
                         if response.text:
@@ -66,8 +67,8 @@ else:
                             st.markdown(response.text)
 
                 except Exception as e:
-                    # Se o Google ainda estiver sincronizando o Pix (foto 397e), este erro aparecerá
-                    st.error(f"Sincronizando faturamento... Tente novamente em 2 minutos. Erro: {e}")
+                    # Se o erro 404 persistir, o sistema mostrará este detalhe
+                    st.error(f"Sincronizando faturamento. Tente novamente em instantes. Detalhe: {e}")
         else:
             st.error("E-mail não encontrado.")
     
